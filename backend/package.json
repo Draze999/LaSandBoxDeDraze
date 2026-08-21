@@ -1,0 +1,14 @@
+{
+  "name": "roomhub-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "tsx watch src/server.ts", "build": "tsc", "start": "node dist/server.js" },
+  "dependencies": {
+    "@fastify/cors": "latest",
+    "fastify": "latest",
+    "socket.io": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": { "@types/node": "latest", "tsx": "latest", "typescript": "latest" }
+}
