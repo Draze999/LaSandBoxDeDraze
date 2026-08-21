@@ -36,7 +36,7 @@ const games: Game[] = [
   {
     id: "game-3",
     name: "Petit Bac",
-    description: "Work In Progress",
+    description: "Qui aura le plus de points ?",
     color: "#8b3d3d",
     icon: "📝",
   },
