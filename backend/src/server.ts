@@ -1,0 +1,317 @@
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import { Server as SocketIOServer } from "socket.io";
+import { randomUUID } from "node:crypto";
+import { z } from "zod";
+import {
+  addPlayer,
+  createRoom,
+  getRoom,
+  removePlayerBySocket,
+  serializeRoom,
+} from "./rooms.js";
+import type { GameId } from "./types.js";
+import { PETIT_BAC_CATEGORY_IDS, PETIT_BAC_TIME_LIMITS } from "./games/petit-bac/constants.js";
+import type { PetitBacCategory } from "./games/petit-bac/constants.js";
+import { PetitBacEngine } from "./games/petit-bac/engine.js";
+
+const app = Fastify({ logger: true });
+const PORT = Number(process.env.PORT ?? 3001);
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
+
+await app.register(cors, {
+  origin: CLIENT_ORIGIN,
+  credentials: true,
+});
+
+const io = new SocketIOServer(app.server, {
+  cors: {
+    origin: CLIENT_ORIGIN,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+const pseudo = z.string().trim().min(1).max(20);
+const game = z.enum(["game-1", "game-2", "game-3", "game-4"]);
+const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{5}$/);
+const timeLimit = z.union([
+  z.literal(20),
+  z.literal(30),
+  z.literal(40),
+  z.literal(50),
+  z.literal(60),
+]);
+
+const gameSettingsSchema = z.object({
+  timeLimit: timeLimit.default(60),
+});
+
+const createSchema = z.object({
+  pseudo,
+  gameId: game,
+  settings: z.object({
+    name: z.string().trim().min(1).max(40).default("Ma partie"),
+    maxPlayers: z.number().int().min(2).max(12).default(8),
+    private: z.boolean().default(true),
+    gameSettings: gameSettingsSchema.default({ timeLimit: 60 }),
+  }).default({
+    name: "Ma partie",
+    maxPlayers: 8,
+    private: true,
+    gameSettings: { timeLimit: 60 },
+  }),
+});
+
+const joinSchema = z.object({ pseudo, code });
+
+const petitBac = new PetitBacEngine({
+  onState: (roomCode) => {
+    const snapshot = petitBac.snapshot(roomCode);
+    if (snapshot) io.to(roomCode).emit("game3:state", snapshot);
+  },
+  onCategoryResult: (roomCode, payload) => {
+    io.to(roomCode).emit("game3:category-result", payload);
+    const snapshot = petitBac.snapshot(roomCode);
+    if (snapshot) io.to(roomCode).emit("game3:state", snapshot);
+  },
+});
+
+app.get("/health", async () => ({ ok: true, service: "roomhub-backend" }));
+
+app.get("/api/rooms/:code", async (req, reply) => {
+  const parsed = z.object({ code }).safeParse(req.params);
+  if (!parsed.success) return reply.code(400).send({ error: "INVALID_CODE" });
+
+  const room = getRoom(parsed.data.code);
+  if (!room) return reply.code(404).send({ error: "ROOM_NOT_FOUND" });
+
+  return { room: serializeRoom(room) };
+});
+
+io.on("connection", (socket) => {
+  socket.on("room:create", (payload, cb) => {
+    const parsed = createSchema.safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+
+    const id = randomUUID();
+    const room = createRoom(
+      parsed.data.gameId as GameId,
+      {
+        id,
+        pseudo: parsed.data.pseudo,
+        socketId: socket.id,
+      },
+      parsed.data.settings,
+    );
+
+    socket.join(room.code);
+    socket.data.playerId = id;
+    socket.data.roomCode = room.code;
+
+    cb?.({
+      ok: true,
+      playerId: id,
+      room: serializeRoom(room),
+    });
+
+    io.to(room.code).emit("room:updated", serializeRoom(room));
+  });
+
+  socket.on("room:join", (payload, cb) => {
+    const parsed = joinSchema.safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+
+    const room = getRoom(parsed.data.code);
+    if (!room) return cb?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+    const id = randomUUID();
+
+    try {
+      addPlayer(room, {
+        id,
+        pseudo: parsed.data.pseudo,
+        socketId: socket.id,
+      });
+    } catch (error) {
+      return cb?.({
+        ok: false,
+        error: error instanceof Error ? error.message : "JOIN_FAILED",
+      });
+    }
+
+    socket.join(room.code);
+    socket.data.playerId = id;
+    socket.data.roomCode = room.code;
+
+    cb?.({
+      ok: true,
+      playerId: id,
+      room: serializeRoom(room),
+    });
+
+    io.to(room.code).emit("room:updated", serializeRoom(room));
+  });
+
+  socket.on("room:update-settings", (payload, cb) => {
+    const room = getRoom(socket.data.roomCode ?? "");
+    if (!room) return cb?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+    if (room.hostId !== socket.data.playerId) {
+      return cb?.({ ok: false, error: "NOT_HOST" });
+    }
+
+    const schema = z.object({
+      name: z.string().trim().min(1).max(40).optional(),
+      maxPlayers: z.number().int().min(2).max(12).optional(),
+      private: z.boolean().optional(),
+      gameSettings: gameSettingsSchema.partial().optional(),
+    });
+
+    const parsed = schema.safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+
+    if (
+      parsed.data.maxPlayers !== undefined &&
+      parsed.data.maxPlayers < room.players.size
+    ) {
+      return cb?.({ ok: false, error: "MAX_PLAYERS_TOO_LOW" });
+    }
+
+    room.settings = {
+      ...room.settings,
+      ...parsed.data,
+      gameSettings: parsed.data.gameSettings
+        ? { ...room.settings.gameSettings, ...parsed.data.gameSettings }
+        : room.settings.gameSettings,
+    };
+
+    io.to(room.code).emit("room:updated", serializeRoom(room));
+    cb?.({ ok: true });
+  });
+
+  socket.on("room:start", (cb) => {
+    const room = getRoom(socket.data.roomCode ?? "");
+    if (!room) return cb?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+    if (room.hostId !== socket.data.playerId) {
+      return cb?.({ ok: false, error: "NOT_HOST" });
+    }
+
+    if (room.gameId === "game-3") {
+      const selectedTime = room.settings.gameSettings?.timeLimit ?? 60;
+      const validTime = PETIT_BAC_TIME_LIMITS.includes(
+        selectedTime as (typeof PETIT_BAC_TIME_LIMITS)[number],
+      )
+        ? selectedTime
+        : 60;
+
+      petitBac.start(
+        room.code,
+        [...room.players.keys()],
+        validTime as (typeof PETIT_BAC_TIME_LIMITS)[number],
+      );
+
+      const snapshot = petitBac.snapshot(room.code);
+      if (snapshot) io.to(room.code).emit("game3:start", snapshot);
+
+      return cb?.({ ok: true });
+    }
+
+    io.to(room.code).emit("game:start", {
+      room: serializeRoom(room),
+      startedAt: Date.now(),
+    });
+
+    cb?.({ ok: true });
+  });
+
+  socket.on("game3:request-state", (cb) => {
+    const roomCode = socket.data.roomCode ?? "";
+    const snapshot = petitBac.snapshot(roomCode);
+    if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
+    cb?.({ ok: true, snapshot });
+  });
+
+  socket.on("game3:navigate", (payload, cb) => {
+    const room = getRoom(socket.data.roomCode ?? "");
+    if (!room) return cb?.({ ok: false, error: "ROOM_NOT_FOUND" });
+    if (room.gameId !== "game-3") return cb?.({ ok: false, error: "WRONG_GAME" });
+    if (room.hostId !== socket.data.playerId) {
+      return cb?.({ ok: false, error: "NOT_HOST" });
+    }
+
+    const parsed = z.object({
+      direction: z.enum(["next", "previous"]),
+    }).safeParse(payload);
+
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+
+    const result = parsed.data.direction === "next"
+      ? petitBac.next(room.code)
+      : petitBac.previous(room.code);
+
+    cb?.(result);
+  });
+
+  socket.on("game3:submit", (payload, cb) => {
+    const roomCode = socket.data.roomCode as string | undefined;
+    const playerId = socket.data.playerId as string | undefined;
+
+    if (!roomCode || !playerId) {
+      return cb?.({ ok: false, error: "NOT_IN_ROOM" });
+    }
+
+    const parsed = z.object({
+      answers: z.record(z.string(), z.string().max(100)),
+    }).safeParse(payload);
+
+    if (!parsed.success) {
+      return cb?.({ ok: false, error: "INVALID_DATA" });
+    }
+
+    const result = petitBac.submit(roomCode, playerId, parsed.data.answers);
+    cb?.(result);
+  });
+
+  socket.on("game3:vote", (payload, cb) => {
+    const parsed = z.object({
+      category: z.string(),
+      vote: z.enum(["accept", "reject"]),
+    }).safeParse(payload);
+
+    if (!parsed.success || !PETIT_BAC_CATEGORY_IDS.includes(parsed.data.category as PetitBacCategory)) {
+      return cb?.({ ok: false, error: "INVALID_DATA" });
+    }
+
+    const result = petitBac.vote(
+      socket.data.roomCode ?? "",
+      socket.data.playerId ?? "",
+      parsed.data.category as PetitBacCategory,
+      parsed.data.vote,
+    );
+
+    cb?.(result);
+  });
+
+  socket.on("disconnect", () => {
+    const roomCode = socket.data.roomCode as string | undefined;
+    const playerId = socket.data.playerId as string | undefined;
+
+    const result = removePlayerBySocket(socket.id);
+
+    if (roomCode && playerId) {
+      petitBac.removePlayer(roomCode, playerId);
+    }
+
+    if (result && result.room.players.size > 0) {
+      io.to(result.room.code).emit("room:updated", serializeRoom(result.room));
+    } else if (roomCode) {
+      petitBac.clear(roomCode);
+    }
+  });
+});
+
+app.listen({ port: PORT, host: "0.0.0.0" }).then(() => {
+  app.log.info(`RoomHub backend on http://localhost:${PORT}`);
+});

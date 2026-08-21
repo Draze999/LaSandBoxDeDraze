@@ -1,0 +1,417 @@
+/* =========================================================
+   Jeu 3 — Petit Bac
+   ========================================================= */
+
+.game3-page{
+  width:min(1000px,calc(100% - 40px));
+  margin:auto;
+  position:relative;
+  padding:35px 0 50px;
+}
+.game3-shell{
+  background:var(--surface);
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:20px;
+  padding:34px;
+  backdrop-filter:blur(18px);
+  box-shadow:0 24px 70px #0003,inset 0 1px #fff1;
+}
+.game3-loading{
+  min-height:300px;
+  display:grid;
+  place-content:center;
+  text-align:center;
+}
+.game3-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:25px;
+  margin-bottom:25px;
+}
+.game3-header h1,
+.game3-results h1{
+  margin:0;
+  font-size:clamp(30px,5vw,44px);
+  letter-spacing:-.045em;
+}
+.game3-header h1 span{
+  color:#b08c9a;
+}
+.game3-subtitle{
+  margin:10px 0 0;
+  color:#777f91;
+  font-size:12px;
+  line-height:1.6;
+}
+.game3-letter-badge{
+  width:68px;
+  height:68px;
+  flex:0 0 68px;
+  display:grid;
+  place-items:center;
+  border-radius:18px;
+  background:#3b2028;
+  border:1px solid #68404c;
+  color:#d5aeba;
+  font-size:28px;
+  font-weight:800;
+  box-shadow:0 0 35px #6f38491c;
+}
+.game3-timer{
+  min-width:105px;
+  padding:13px 16px;
+  border-radius:13px;
+  background:#151a25;
+  border:1px solid #2b3342;
+  text-align:center;
+}
+.game3-timer small{
+  display:block;
+  color:#687183;
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-weight:700;
+}
+.game3-timer strong{
+  display:block;
+  margin-top:4px;
+  color:#d9dde7;
+  font-size:24px;
+}
+.game3-timer.danger{
+  background:#351f25;
+  border-color:#633943;
+}
+.game3-timer.danger strong{
+  color:#df9ca9;
+}
+.game3-timer.submitted{
+  border-color:#315a4d;
+  background:#15251f;
+}
+.game3-timer.submitted strong{
+  color:#8dc1ae;
+}
+.game3-letter-panel{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:13px 16px;
+  margin-bottom:18px;
+  border-radius:12px;
+  background:#0b0f17b8;
+  border:1px solid #202736;
+}
+.game3-letter-panel span{
+  color:#697285;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  font-weight:700;
+}
+.game3-letter-panel strong{
+  color:#c9a4b0;
+  font-size:20px;
+}
+.game3-letter-panel small{
+  color:#5f6879;
+  font-size:10px;
+  margin-left:auto;
+}
+.game3-form{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.game3-field{
+  margin:0;
+}
+.game3-field > span{
+  display:block;
+  color:#b9c1d2;
+  font-size:15px;
+  line-height:1.25;
+  font-weight:750;
+  min-height:0;
+  margin-bottom:1px;
+}
+.game3-field input{
+  margin-top:0;
+}
+.game3-field input:disabled{
+  opacity:.55;
+}
+.game3-actions{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  margin-top:20px;
+}
+.game3-actions > span{
+  color:#687183;
+  font-size:10px;
+  flex:1;
+}
+.game3-actions .primary{
+  width:auto;
+  min-width:190px;
+}
+.game3-answer-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.game3-answer{
+  min-height:68px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:12px 14px;
+  border-radius:12px;
+  background:#0b0f17b8;
+  border:1px solid #202736;
+}
+.game3-answer-main{
+  min-width:0;
+  flex:1;
+}
+.game3-category{
+  display:block;
+  color:#aeb6c7;
+  font-size:13px;
+  text-transform:none;
+  letter-spacing:0;
+  line-height:1.25;
+  font-weight:750;
+  margin-bottom:3px;
+}
+.game3-answer-main strong{
+  display:block;
+  color:#d9dce5;
+  font-size:12px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.game3-answer-main strong.empty{
+  color:#535c6d;
+  font-weight:500;
+}
+.game3-votes{
+  display:flex;
+  gap:7px;
+}
+.vote{
+  width:38px;
+  height:38px;
+  border-radius:10px;
+  border:1px solid;
+  color:#cbd1dd;
+  font-weight:800;
+  transition:.15s ease;
+}
+.vote:hover:not(:disabled){
+  transform:translateY(-1px);
+  filter:brightness(1.15);
+}
+.vote.accept{
+  background:#19352d;
+  border-color:#315f51;
+}
+.vote.reject{
+  background:#352329;
+  border-color:#603a43;
+}
+.vote.accept.chosen{
+  background:#27614f;
+  border-color:#4b927a;
+}
+.vote.reject.chosen{
+  background:#63323e;
+  border-color:#965264;
+}
+.vote:disabled{
+  cursor:default;
+  opacity:.8;
+}
+.game3-result{
+  min-width:135px;
+  text-align:right;
+}
+.game3-result b{
+  display:block;
+  font-size:10px;
+}
+.game3-result span{
+  display:block;
+  margin-top:3px;
+  color:#687183;
+  font-size:9px;
+}
+.game3-result.accepted b{
+  color:#82b9a6;
+}
+.game3-result.rejected b{
+  color:#d08e9c;
+}
+.game3-result.neutral span{
+  color:#555e6e;
+}
+.game3-vote-wait{
+  min-width:135px;
+  text-align:right;
+  color:#626b7c;
+  font-size:9px;
+}
+.game3-results-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:24px;
+}
+.game3-ranking{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:22px;
+}
+.game3-ranking-row{
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 13px;
+  border-radius:12px;
+  background:#0b0f17b8;
+  border:1px solid #202736;
+}
+.game3-rank{
+  width:32px;
+  color:#666f81;
+  font-size:10px;
+  font-weight:700;
+}
+.game3-avatar{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:9px;
+  background:#2c3446;
+  color:#b9c3dc;
+  font-size:11px;
+}
+.game3-ranking-row strong{
+  color:#d5d8e1;
+  font-size:12px;
+}
+.game3-ranking-row small{
+  color:#697285;
+  font-size:7px;
+  font-weight:700;
+  margin-left:2px;
+}
+.game3-ranking-row b{
+  margin-left:auto;
+  color:#bda9d8;
+  font-size:12px;
+}
+
+@media(max-width:700px){
+  .game3-page{width:calc(100% - 24px);padding-top:24px}
+  .game3-shell{padding:20px}
+  .game3-form{grid-template-columns:1fr}
+  .game3-header{align-items:flex-start}
+  .game3-letter-badge{width:56px;height:56px;flex-basis:56px;border-radius:15px}
+  .game3-actions{display:block}
+  .game3-actions > span{display:block;margin-bottom:10px}
+  .game3-actions .primary{width:100%}
+  .game3-answer{align-items:flex-start}
+  .game3-result,.game3-vote-wait{min-width:105px}
+}
+
+
+.game3-navigation{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-top:24px;
+  padding-top:20px;
+  border-top:1px solid #202736;
+}
+
+.game3-navigation-info{
+  flex:1;
+  min-width:0;
+  text-align:center;
+}
+
+.game3-navigation-info strong{
+  display:block;
+  color:#d9dce5;
+  font-size:12px;
+}
+
+.game3-navigation-info span{
+  display:block;
+  margin-top:5px;
+  color:#687183;
+  font-size:9px;
+}
+
+.game3-navigation-center{
+  padding:4px 0;
+}
+
+.game3-nav-button{
+  width:auto;
+  min-width:170px;
+}
+
+.game3-nav-button:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+}
+
+@media(max-width:700px){
+  .game3-navigation{
+    flex-wrap:wrap;
+  }
+
+  .game3-navigation-info{
+    order:-1;
+    flex-basis:100%;
+  }
+
+  .game3-nav-button{
+    flex:1;
+    min-width:0;
+  }
+
+  .game3-field > span{
+    font-size:13px;
+  }
+}
+
+.game3-total-score{
+  font-size:inherit;
+  font-family:inherit;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.game3-round-gain{
+  margin-left:8px;
+  font-size:inherit;
+  font-family:inherit;
+  font-weight:800;
+  line-height:inherit;
+}
+.game3-nav-button.primary:disabled{
+  opacity:.3;
+  border-color:#5c456f;
+  color:#9b8aa8;
+  cursor:not-allowed;
+  transform:none;
+}
