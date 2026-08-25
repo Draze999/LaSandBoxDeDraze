@@ -10,7 +10,7 @@ import { supabase } from "./supabase.js";
  * @param {number|string} id
  * @returns {object|null}
  */
-export async function getAnime(id) {
+export async function getAnime(id: number) {
   const { data, error } = await supabase
 
     .from("anime")
@@ -49,7 +49,7 @@ export async function getAnime(id) {
  * @param {number|string} malId
  * @returns {object|null}
  */
-export async function getAnimeByMalId(malId) {
+export async function getAnimeByMalId(malId:number) {
   const { data, error } = await supabase
 
     .from("anime_sources")
@@ -149,7 +149,7 @@ export async function getRandomAnime() {
  * @param {number|string} id
  * @returns {object|null}
  */
-export async function getCharacter(id) {
+export async function getCharacter(id:number) {
   const { data, error } = await supabase
 
     .from("characters")
@@ -186,7 +186,7 @@ export async function getCharacter(id) {
  * @param {number|string} malId
  * @returns {object|null}
  */
-export async function getCharacterByMalId(malId) {
+export async function getCharacterByMalId(malId:number) {
   const { data, error } = await supabase
 
     .from("characters")
@@ -223,7 +223,7 @@ export async function getCharacterByMalId(malId) {
  * @param {number|string} animeId
  * @returns {Array}
  */
-export async function getCharactersByAnime(animeId) {
+export async function getCharactersByAnime(animeId: number) {
   const { data, error } = await supabase
 
     .from("character_catalog")
@@ -321,7 +321,7 @@ export async function getRandomCharacter() {
  * @param {number} count
  * @returns {Array}
  */
-export async function getRandomCharacters(count) {
+export async function getRandomCharacters(count: number) {
   const amount = Math.max(1, Math.floor(Number(count) || 1));
 
   const { data, error } = await supabase.rpc("get_random_characters", {
@@ -352,7 +352,7 @@ export async function getRandomCharacters(count) {
  * @param {number|string} id
  * @returns {object|null}
  */
-export async function getCharacterGameData(id) {
+export async function getCharacterGameData(id:number) {
   const { data, error } = await supabase
     .from("character_catalog")
     .select(`
@@ -388,7 +388,7 @@ export async function getCharacterGameData(id) {
  * @param {string} name
  * @returns {Array}
  */
-export async function searchCharacters(name) {
+export async function searchCharacters(name: string) {
   const search = String(name ?? "").trim();
 
   if (!search) {
@@ -433,7 +433,7 @@ export async function searchCharacters(name) {
  * @param {string} name
  * @returns {Array}
  */
-export async function searchAnime(name) {
+export async function searchAnime(name: string) {
   const search = String(name ?? "").trim();
 
   if (!search) {
