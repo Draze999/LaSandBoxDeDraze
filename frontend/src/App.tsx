@@ -15,7 +15,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: 20 | 30 | 40 | 50 | 60; theOuCafeCategory?: "anime" | "character" } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character" } };
   players: Player[];
 };
 
@@ -319,20 +319,25 @@ export default function App() {
                 )}
                 {room.gameId === "game-3" && (
                   <label>
-                    Temps du Petit Bac
-                    <select
+                    Temps du Petit Bac :{" "}
+                    <strong>{room.settings.gameSettings?.timeLimit ?? 60}s</strong>
+
+                    <input
+                      type="range"
+                      min={20}
+                      max={240}
+                      step={5}
                       value={room.settings.gameSettings?.timeLimit ?? 60}
                       disabled={room.hostId !== playerId}
                       onChange={(e) =>
-                        update({ gameSettings: { timeLimit: Number(e.target.value) } })
+                        update({
+                          gameSettings: {
+                            timeLimit: Number(e.target.value),
+                          },
+                        })
                       }
-                    >
-                      {[20, 30, 40, 50, 60].map((seconds) => (
-                        <option key={seconds} value={seconds}>
-                          {seconds} secondes
-                        </option>
-                      ))}
-                    </select>
+                      style={{ width: "100%" }}
+                    />
                   </label>
                 )}
                 {room.hostId === playerId ? (

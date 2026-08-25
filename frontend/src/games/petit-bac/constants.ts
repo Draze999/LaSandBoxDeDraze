@@ -13,8 +13,6 @@ export const PETIT_BAC_CATEGORIES = [
   ["endingOrArtist", "Ending ou Artiste de l'Ending"],
 ] as const;
 
-export const PETIT_BAC_TIME_LIMITS = [20, 30, 40, 50, 60] as const;
-
 export type PetitBacCategory = typeof PETIT_BAC_CATEGORIES[number][0];
 export type PetitBacAnswers = Partial<Record<PetitBacCategory, string>>;
 

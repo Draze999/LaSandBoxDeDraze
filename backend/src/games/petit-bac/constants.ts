@@ -21,5 +21,4 @@ export const PETIT_BAC_LETTERS = [
   "N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
 ] as const;
 
-export const PETIT_BAC_TIME_LIMITS = [20, 30, 40, 50, 60] as const;
-export type PetitBacTimeLimit = typeof PETIT_BAC_TIME_LIMITS[number];
+export type PetitBacTimeLimit = number;

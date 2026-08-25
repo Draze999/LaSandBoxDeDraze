@@ -11,7 +11,7 @@ import {
   serializeRoom,
 } from "./rooms.js";
 import type { GameId } from "./types.js";
-import { PETIT_BAC_CATEGORY_IDS, PETIT_BAC_TIME_LIMITS } from "./games/petit-bac/constants.js";
+import { PETIT_BAC_CATEGORY_IDS } from "./games/petit-bac/constants.js";
 import type { PetitBacCategory } from "./games/petit-bac/constants.js";
 import { PetitBacEngine } from "./games/petit-bac/engine.js";
 import { TheOuCafeEngine } from "./games/the-ou-cafe/engine.js";
@@ -37,13 +37,12 @@ const io = new SocketIOServer(app.server, {
 const pseudo = z.string().trim().min(1).max(20);
 const game = z.enum(["game-1", "game-2", "game-3", "game-4"]);
 const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{5}$/);
-const timeLimit = z.union([
-  z.literal(20),
-  z.literal(30),
-  z.literal(40),
-  z.literal(50),
-  z.literal(60),
-]);
+const timeLimit = z
+  .number()
+  .int()
+  .min(20)
+  .max(240)
+  .refine((value) => value % 5 === 0);
 
 const gameSettingsSchema = z.object({
   timeLimit: timeLimit.default(60),
@@ -231,16 +230,17 @@ io.on("connection", (socket) => {
 
     if (room.gameId === "game-3") {
       const selectedTime = room.settings.gameSettings?.timeLimit ?? 60;
-      const validTime = PETIT_BAC_TIME_LIMITS.includes(
-        selectedTime as (typeof PETIT_BAC_TIME_LIMITS)[number],
-      )
-        ? selectedTime
-        : 60;
+      const validTime =
+        selectedTime >= 20 &&
+        selectedTime <= 240 &&
+        selectedTime % 5 === 0
+          ? selectedTime
+          : 60;
 
       petitBac.start(
         room.code,
         [...room.players.keys()],
-        validTime as (typeof PETIT_BAC_TIME_LIMITS)[number],
+        validTime,
       );
 
       const snapshot = petitBac.snapshot(room.code);

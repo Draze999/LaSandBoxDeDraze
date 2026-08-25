@@ -13,7 +13,7 @@ export type RoomSettings = {
   maxPlayers: number;
   private: boolean;
   gameSettings?: {
-    timeLimit?: 20 | 30 | 40 | 50 | 60;
+    timeLimit?: number;
     theOuCafeCategory?: "anime" | "character";
   };
 };
