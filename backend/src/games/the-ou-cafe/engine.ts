@@ -13,7 +13,12 @@ type Callback = (roomCode: string) => void;
 type State = {
   category: TheOuCafeCategory;
   targetPlayerId: string;
-  secret: { id: number; name: string; imageUrl?: string | null };
+  secret: {
+    id: number;
+    name: string;
+    imageUrl?: string | null;
+    animeName?: string | null;
+  };
   questions: TheOuCafeQuestion[];
   answers: TheOuCafeAnswer[];
   phase: "playing" | "finished";
