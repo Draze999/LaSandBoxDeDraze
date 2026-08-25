@@ -345,6 +345,38 @@ export async function getRandomCharacters(count) {
   return characters.slice(0, amount);
 }
 
+/**
+ * Récupère les informations d'un personnage nécessaires aux jeux,
+ * notamment le nom de l'anime associé.
+ *
+ * @param {number|string} id
+ * @returns {object|null}
+ */
+export async function getCharacterGameData(id) {
+  const { data, error } = await supabase
+    .from("character_catalog")
+    .select(`
+      id,
+      mal_id,
+      name,
+      image_url,
+      image_small_url,
+      role,
+      anime_id,
+      anime_name,
+      anime_image_url,
+      anime_image_small_url
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
 // =========================================================
 // RECHERCHE
 // =========================================================

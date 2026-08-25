@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import PetitBac from "./games/petit-bac/PetitBac";
+import TheOuCafe from "./games/the-ou-cafe/TheOuCafe";
 
 type Game = {
   id: string;
@@ -14,7 +15,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: 20 | 30 | 40 | 50 | 60 } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: 20 | 30 | 40 | 50 | 60; theOuCafeCategory?: "anime" | "character" } };
   players: Player[];
 };
 
@@ -22,7 +23,7 @@ const games: Game[] = [
   {
     id: "game-1",
     name: "Thé ou Café",
-    description: "Work In Progress",
+    description: "Plutôt Rapide ou Efficace ?",
     color: "#3d8b78",
     icon: "🍵",
   },
@@ -129,13 +130,16 @@ export default function App() {
     const updated = (r: Room) => setRoom(r);
     const start = () => setStarted(true);
     const startGame3 = () => setStarted(true);
+    const startGame1 = () => setStarted(true);
     socket.on("room:updated", updated);
     socket.on("game:start", start);
     socket.on("game3:start", startGame3);
+    socket.on("game1:start", startGame1);
     return () => {
       socket.off("room:updated", updated);
       socket.off("game:start", start);
       socket.off("game3:start", startGame3);
+      socket.off("game1:start", startGame1);
     };
   }, []);
   const connect = () => {
@@ -184,6 +188,22 @@ export default function App() {
     socket.emit("room:update-settings", patch, (r: any) => {
       if (!r?.ok) setError("Impossible de modifier les paramètres.");
     });
+  if (room && room.gameId === "game-1" && started)
+    return (
+      <div className="app">
+        <Background />
+        <main className="room-page">
+          <header className="topbar">
+            <button className="brand" onClick={() => setStarted(false)}>
+              <span className="brand-mark">A</span> L'Atelier de Draze
+            </button>
+            <span className="status"><i /> Partie en cours</span>
+          </header>
+          <TheOuCafe room={room} playerId={playerId} onExit={() => setStarted(false)} />
+        </main>
+      </div>
+    );
+
   if (room && room.gameId === "game-3" && started)
     return (
       <div className="app">
@@ -282,6 +302,21 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+                {room.gameId === "game-1" && (
+                  <label>
+                    Type de contenu
+                    <select
+                      value={room.settings.gameSettings?.theOuCafeCategory ?? "anime"}
+                      disabled={room.hostId !== playerId}
+                      onChange={(e) =>
+                        update({ gameSettings: { theOuCafeCategory: e.target.value } })
+                      }
+                    >
+                      <option value="anime">Animé</option>
+                      <option value="character">Personnage</option>
+                    </select>
+                  </label>
+                )}
                 {room.gameId === "game-3" && (
                   <label>
                     Temps du Petit Bac
