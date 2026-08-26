@@ -2,7 +2,7 @@ export const PETIT_BAC_CATEGORIES = [
   ["anime", "Animé"],
   ["maleCharacter", "Personnage masculin"],
   ["femaleCharacter", "Personnage féminin"],
-  ["childlikeCharacter", "Personnage au physique enfantin"],
+  ["childlikeCharacter", "Personnage au physique enfantin ou Animal"],
   ["powerOrTrait", "Pouvoir ou Trait de caractère spécifique"],
   ["jobOrOccupation", "Métier ou Occupation d'un des personnage"],
   ["groupOrOrganization", "Groupe ou Organisation"],

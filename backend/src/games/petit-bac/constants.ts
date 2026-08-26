@@ -2,7 +2,7 @@ export const PETIT_BAC_CATEGORIES = [
   { id: "anime", label: "Animé" },
   { id: "maleCharacter", label: "Personnage masculin" },
   { id: "femaleCharacter", label: "Personnage féminin" },
-  { id: "childlikeCharacter", label: "Personnage au physique enfantin" },
+  { id: "childlikeCharacter", label: "Personnage au physique enfantin ou Animal" },
   { id: "powerOrTrait", label: "Pouvoir ou Trait de caractère spécifique" },
   { id: "jobOrOccupation", label: "Métier ou Occupation d'un des personnage" },
   { id: "groupOrOrganization", label: "Groupe ou Organisation" },
