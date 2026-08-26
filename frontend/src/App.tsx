@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import PetitBac from "./games/petit-bac/PetitBac";
 import TheOuCafe from "./games/the-ou-cafe/TheOuCafe";
+import FauxFan from "./games/faux-fan/FauxFan";
 
 type Game = {
   id: string;
@@ -15,7 +16,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character" } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character" } };
   players: Player[];
 };
 
@@ -131,15 +132,18 @@ export default function App() {
     const start = () => setStarted(true);
     const startGame3 = () => setStarted(true);
     const startGame1 = () => setStarted(true);
+    const startGame2 = () => setStarted(true);
     socket.on("room:updated", updated);
     socket.on("game:start", start);
     socket.on("game3:start", startGame3);
     socket.on("game1:start", startGame1);
+    socket.on("game2:start", startGame2);
     return () => {
       socket.off("room:updated", updated);
       socket.off("game:start", start);
       socket.off("game3:start", startGame3);
       socket.off("game1:start", startGame1);
+      socket.off("game2:start", startGame2);
     };
   }, []);
   const connect = () => {
@@ -155,7 +159,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60 } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime" } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -200,6 +204,22 @@ export default function App() {
             <span className="status"><i /> Partie en cours</span>
           </header>
           <TheOuCafe room={room} playerId={playerId} onExit={() => setStarted(false)} />
+        </main>
+      </div>
+    );
+
+  if (room && room.gameId === "game-2" && started)
+    return (
+      <div className="app">
+        <Background />
+        <main className="room-page">
+          <header className="topbar">
+            <button className="brand" onClick={() => setStarted(false)}>
+              <span className="brand-mark">A</span> L'Atelier de Draze
+            </button>
+            <span className="status"><i /> Partie en cours</span>
+          </header>
+          <FauxFan room={room} playerId={playerId} onExit={() => setStarted(false)} />
         </main>
       </div>
     );
@@ -310,6 +330,21 @@ export default function App() {
                       disabled={room.hostId !== playerId}
                       onChange={(e) =>
                         update({ gameSettings: { theOuCafeCategory: e.target.value } })
+                      }
+                    >
+                      <option value="anime">Animé</option>
+                      <option value="character">Personnage</option>
+                    </select>
+                  </label>
+                )}
+                {room.gameId === "game-2" && (
+                  <label>
+                    Type de contenu
+                    <select
+                      value={room.settings.gameSettings?.fauxFanCategory ?? "anime"}
+                      disabled={room.hostId !== playerId}
+                      onChange={(e) =>
+                        update({ gameSettings: { fauxFanCategory: e.target.value } })
                       }
                     >
                       <option value="anime">Animé</option>

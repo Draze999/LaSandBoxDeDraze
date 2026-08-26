@@ -15,6 +15,8 @@ import { PETIT_BAC_CATEGORY_IDS } from "./games/petit-bac/constants.js";
 import type { PetitBacCategory } from "./games/petit-bac/constants.js";
 import { PetitBacEngine } from "./games/petit-bac/engine.js";
 import { TheOuCafeEngine } from "./games/the-ou-cafe/engine.js";
+import { FauxFanEngine } from "./games/faux-fan/engine.js";
+import type { FauxFanCategory } from "./games/faux-fan/constants.js";
 import { THE_OU_CAFE_CATEGORY_IDS, type TheOuCafeCategory } from "./games/the-ou-cafe/constants.js";
 
 const app = Fastify({ logger: true });
@@ -47,6 +49,7 @@ const timeLimit = z
 const gameSettingsSchema = z.object({
   timeLimit: timeLimit.default(60),
   theOuCafeCategory: z.enum(["anime", "character"]).default("anime"),
+  fauxFanCategory: z.enum(["anime", "character"]).default("anime"),
 });
 
 const createSchema = z.object({
@@ -56,12 +59,12 @@ const createSchema = z.object({
     name: z.string().trim().min(1).max(40).default("Ma partie"),
     maxPlayers: z.number().int().min(2).max(12).default(8),
     private: z.boolean().default(true),
-    gameSettings: gameSettingsSchema.default({ timeLimit: 60, theOuCafeCategory: "anime" }),
+    gameSettings: gameSettingsSchema.default({ timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime" }),
   }).default({
     name: "Ma partie",
     maxPlayers: 8,
     private: true,
-    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime" },
+    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime" },
   }),
 });
 
@@ -75,6 +78,16 @@ const theOuCafe = new TheOuCafeEngine((roomCode) => {
     if (snapshot && player.socketId) {
       io.to(player.socketId).emit("game1:state", snapshot);
     }
+  }
+});
+
+const fauxFan = new FauxFanEngine((roomCode) => {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    if (!player.socketId) continue;
+    const snapshot = fauxFan.snapshot(roomCode, player.id);
+    if (snapshot) io.to(player.socketId).emit("game2:state", snapshot);
   }
 });
 
@@ -228,6 +241,20 @@ io.on("connection", (socket) => {
       return cb?.({ ok: true });
     }
 
+    if (room.gameId === "game-2") {
+      if (room.players.size < 3) {
+        return cb?.({ ok: false, error: "NOT_ENOUGH_PLAYERS" });
+      }
+      const category = room.settings.gameSettings?.fauxFanCategory ?? "anime";
+      const result = await fauxFan.start(room.code, [...room.players.keys()], category as FauxFanCategory);
+      if (!result.ok) return cb?.(result);
+      for (const player of room.players.values()) {
+        const snapshot = fauxFan.snapshot(room.code, player.id);
+        if (snapshot && player.socketId) io.to(player.socketId).emit("game2:start", snapshot);
+      }
+      return cb?.({ ok: true });
+    }
+
     if (room.gameId === "game-3") {
       const selectedTime = room.settings.gameSettings?.timeLimit ?? 60;
       const validTime =
@@ -289,6 +316,42 @@ io.on("connection", (socket) => {
 
   socket.on("game1:no-find", (cb) => {
     cb?.(theOuCafe.noFind(socket.data.roomCode ?? "", socket.data.playerId ?? ""));
+  });
+
+  socket.on("game2:request-state", (cb) => {
+    const snapshot = fauxFan.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
+    if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
+    cb?.({ ok: true, snapshot });
+  });
+
+  socket.on("game2:ask", (payload, cb) => {
+    const parsed = z.object({ targetId: z.string(), text: z.string().max(200) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(fauxFan.ask(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.targetId, parsed.data.text));
+  });
+
+  socket.on("game2:answer", (payload, cb) => {
+    const parsed = z.object({ questionId: z.string(), text: z.string().max(240) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(fauxFan.answer(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.questionId, parsed.data.text));
+  });
+
+  socket.on("game2:vote", (payload, cb) => {
+    const parsed = z.object({ targetId: z.string() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(fauxFan.vote(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.targetId));
+  });
+
+  socket.on("game2:guess", (payload, cb) => {
+    const parsed = z.object({ guess: z.string().max(120) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(fauxFan.submitGuess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.guess));
+  });
+
+  socket.on("game2:guess-vote", (payload, cb) => {
+    const parsed = z.object({ accepted: z.boolean() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(fauxFan.voteGuess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.accepted));
   });
 
   socket.on("game3:request-state", (cb) => {
@@ -368,6 +431,7 @@ io.on("connection", (socket) => {
     if (roomCode && playerId) {
       petitBac.removePlayer(roomCode, playerId);
       theOuCafe.removePlayer(roomCode, playerId);
+      fauxFan.removePlayer(roomCode, playerId);
     }
 
     if (result && result.room.players.size > 0) {
@@ -375,6 +439,7 @@ io.on("connection", (socket) => {
     } else if (roomCode) {
       petitBac.clear(roomCode);
       theOuCafe.clear(roomCode);
+      fauxFan.clear(roomCode);
     }
   });
 });

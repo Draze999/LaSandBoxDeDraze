@@ -15,6 +15,7 @@ export type RoomSettings = {
   gameSettings?: {
     timeLimit?: number;
     theOuCafeCategory?: "anime" | "character";
+    fauxFanCategory?: "anime" | "character";
   };
 };
 

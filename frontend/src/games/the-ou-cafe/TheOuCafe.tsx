@@ -142,7 +142,7 @@ export default function TheOuCafe({
               {isTarget ? "Tu connais la réponse." : "À toi de trouver !"}
             </h1>
             <p className="game1-subtitle">
-              Joueur cible : <strong>{player(game.targetPlayerId)}</strong>
+              Mastermind : <strong>{player(game.targetPlayerId)}</strong>
             </p>
           </div>
           {isTarget && (
