@@ -31,7 +31,7 @@ const games: Game[] = [
   {
     id: "game-2",
     name: "Le Faux Fan",
-    description: "Work In Progress",
+    description: "Est-ce possible de tromper tes amis ?",
     color: "#4e78c8",
     icon: "🎭",
   },
