@@ -297,7 +297,7 @@
   border-color: #7a4b57;
 }
 
-@media (max-width: 60%) {
+@media (max-width: 600px) {
   .game5-guess-form {
     flex-direction: column;
   }
