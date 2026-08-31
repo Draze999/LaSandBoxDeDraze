@@ -37,9 +37,38 @@ export class TierlistEngine {
     return {ok:true as const};
   }
   get(code:string){return this.states.get(code);}
-  private finishSorting(code:string){const s=this.states.get(code); if(!s||s.phase!=="sorting")return; s.phase="guessing"; s.currentPlayerIndex=0; s.guesses=[]; this.onState(code);}
+  private finishSorting(code:string){
+    const s=this.states.get(code);
+    if(!s || s.phase!=="sorting") return;
+    const timer=this.timers.get(code);
+    if(timer) clearTimeout(timer);
+    this.timers.delete(code);
+    s.phase="guessing";
+    s.currentPlayerIndex=0;
+    s.guesses=[];
+    s.endsAt=0;
+    this.onState(code);
+  }
   place(code:string,playerId:string,itemId:number,tier:TierlistTier|null){const s=this.states.get(code); if(!s||s.phase!=="sorting")return{ok:false as const,error:"NOT_SORTING"}; if(Date.now()>s.endsAt)return{ok:false as const,error:"TIME_OVER"}; const b=s.boards[playerId]; if(!b)return{ok:false as const,error:"PLAYER_NOT_FOUND"}; if(!s.items.some(x=>x.id===itemId))return{ok:false as const,error:"ITEM_NOT_FOUND"}; if(tier!==null&&!['S','A','B','C','D'].includes(tier))return{ok:false as const,error:"INVALID_TIER"}; b.placements[String(itemId)]=tier;b.validated=false;this.onState(code);return{ok:true as const};}
-  validate(code:string,playerId:string){const s=this.states.get(code);if(!s||s.phase!=="sorting")return{ok:false as const,error:"NOT_SORTING"};const b=s.boards[playerId];if(!b)return{ok:false as const,error:"PLAYER_NOT_FOUND"};b.validated=true; if(s.turnOrder.every(id=>s.boards[id]?.validated)){this.finishSorting(code);return{ok:true as const,advanced:true};}this.onState(code);return{ok:true as const,advanced:false};}
+  validate(code:string,playerId:string){
+    const s=this.states.get(code);
+    if(!s || s.phase!=="sorting") return {ok:false as const,error:"NOT_SORTING"};
+    const b=s.boards[playerId];
+    if(!b) return {ok:false as const,error:"PLAYER_NOT_FOUND"};
+
+    b.validated=true;
+    const everyoneValidated = s.turnOrder.length > 0 && s.turnOrder.every(id => s.boards[id]?.validated === true);
+
+    if(everyoneValidated){
+      // Transition immediately. The server is authoritative; every connected
+      // client receives the new snapshot through onState().
+      this.finishSorting(code);
+      return {ok:true as const,advanced:true};
+    }
+
+    this.onState(code);
+    return {ok:true as const,advanced:false};
+  }
   guess(code:string,authorId:string,text:string){const s=this.states.get(code);if(!s||s.phase!=="guessing")return{ok:false as const,error:"NOT_GUESSING"};const target=s.turnOrder[s.currentPlayerIndex];if(authorId===target)return{ok:false as const,error:"CANNOT_GUESS_OWN"};if(!text.trim())return{ok:false as const,error:"EMPTY_GUESS"};if(s.guesses.some(g=>g.authorId===authorId&&g.targetPlayerId===target))return{ok:false as const,error:"ALREADY_GUESSED"};s.guesses.push({id:randomUUID(),authorId,targetPlayerId:target,text:text.trim().slice(0,160),accepted:null});const needed=s.turnOrder.length-1;const count=s.guesses.filter(g=>g.targetPlayerId===target).length;if(count===needed)this.advanceGuessing(code,s);else this.onState(code);return{ok:true as const};}
   private advanceGuessing(code:string,s:TierlistState){if(s.currentPlayerIndex<s.turnOrder.length-1){s.currentPlayerIndex++;this.onState(code);return;}s.phase="judging";s.currentPlayerIndex=0;this.onState(code);}
   judge(code:string,ownerId:string,guessId:string,accepted:boolean){const s=this.states.get(code);if(!s||s.phase!=="judging")return{ok:false as const,error:"NOT_JUDGING"};const owner=s.turnOrder[s.currentPlayerIndex];if(ownerId!==owner)return{ok:false as const,error:"NOT_YOUR_TIERLIST"};const g=s.guesses.find(x=>x.id===guessId&&x.targetPlayerId===owner);if(!g)return{ok:false as const,error:"GUESS_NOT_FOUND"};if(g.accepted!==null)return{ok:false as const,error:"ALREADY_JUDGED"};g.accepted=accepted;if(accepted){s.roundScores[g.authorId]++;s.roundScores[owner]++;}const pending=s.guesses.some(x=>x.targetPlayerId===owner&&x.accepted===null);if(!pending)this.advanceJudging(code,s);else this.onState(code);return{ok:true as const};}

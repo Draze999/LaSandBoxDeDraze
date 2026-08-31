@@ -414,7 +414,23 @@ io.on("connection", (socket) => {
   });
 
   socket.on("game4:validate", (cb) => {
-    cb?.(tierlist.validate(socket.data.roomCode ?? "", socket.data.playerId ?? ""));
+    const roomCode = socket.data.roomCode ?? "";
+    const playerId = socket.data.playerId ?? "";
+    const result = tierlist.validate(roomCode, playerId);
+    // Re-broadcast the authoritative snapshot after an immediate phase change.
+    // This is deliberately done here in addition to the engine callback so the
+    // validation request itself can never leave clients on the old phase.
+    if (result.ok && result.advanced) {
+      const room = getRoom(roomCode);
+      if (room) {
+        for (const player of room.players.values()) {
+          if (!player.socketId) continue;
+          const snapshot = tierlist.snapshot(roomCode, player.id);
+          if (snapshot) io.to(player.socketId).emit("game4:state", snapshot);
+        }
+      }
+    }
+    cb?.(result);
   });
 
   socket.on("game4:guess", (payload, cb) => {
@@ -452,7 +468,20 @@ io.on("connection", (socket) => {
   });
 
   socket.on("game5:validate", (cb) => {
-    cb?.(rorschach.validate(socket.data.roomCode ?? "", socket.data.playerId ?? ""));
+    const roomCode = socket.data.roomCode ?? "";
+    const playerId = socket.data.playerId ?? "";
+    const result = rorschach.validate(roomCode, playerId);
+    if (result.ok && result.advanced) {
+      const room = getRoom(roomCode);
+      if (room) {
+        for (const player of room.players.values()) {
+          if (!player.socketId) continue;
+          const snapshot = rorschach.snapshot(roomCode, player.id);
+          if (snapshot) io.to(player.socketId).emit("game5:state", snapshot);
+        }
+      }
+    }
+    cb?.(result);
   });
 
   socket.on("game5:guess", (payload, cb) => {
