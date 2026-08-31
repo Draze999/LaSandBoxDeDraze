@@ -16,8 +16,10 @@ import type { PetitBacCategory } from "./games/petit-bac/constants.js";
 import { PetitBacEngine } from "./games/petit-bac/engine.js";
 import { TheOuCafeEngine } from "./games/the-ou-cafe/engine.js";
 import { FauxFanEngine } from "./games/faux-fan/engine.js";
+import { TierlistEngine } from "./games/tierlists/engine.js";
 import type { FauxFanCategory } from "./games/faux-fan/constants.js";
 import { THE_OU_CAFE_CATEGORY_IDS, type TheOuCafeCategory } from "./games/the-ou-cafe/constants.js";
+import type { TierlistCategory } from "./games/tierlists/constants.js";
 
 const app = Fastify({ logger: true });
 const PORT = Number(process.env.PORT ?? 3001);
@@ -50,6 +52,8 @@ const gameSettingsSchema = z.object({
   timeLimit: timeLimit.default(60),
   theOuCafeCategory: z.enum(["anime", "character"]).default("anime"),
   fauxFanCategory: z.enum(["anime", "character"]).default("anime"),
+  tierlistCategory: z.enum(["anime", "character"]).default("anime"),
+  tierlistItemCount: z.number().int().min(10).max(30).refine(v => v % 5 === 0).default(10),
 });
 
 const createSchema = z.object({
@@ -64,7 +68,7 @@ const createSchema = z.object({
     name: "Ma partie",
     maxPlayers: 8,
     private: true,
-    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime" },
+    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10 },
   }),
 });
 
@@ -88,6 +92,16 @@ const fauxFan = new FauxFanEngine((roomCode) => {
     if (!player.socketId) continue;
     const snapshot = fauxFan.snapshot(roomCode, player.id);
     if (snapshot) io.to(player.socketId).emit("game2:state", snapshot);
+  }
+});
+
+const tierlist = new TierlistEngine((roomCode) => {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    if (!player.socketId) continue;
+    const snapshot = tierlist.snapshot(roomCode, player.id);
+    if (snapshot) io.to(player.socketId).emit("game4:state", snapshot);
   }
 });
 
@@ -255,6 +269,18 @@ io.on("connection", (socket) => {
       return cb?.({ ok: true });
     }
 
+    if (room.gameId === "game-4") {
+      const category = room.settings.gameSettings?.tierlistCategory ?? "anime";
+      const count = room.settings.gameSettings?.tierlistItemCount ?? 10;
+      const result = await tierlist.start(room.code, [...room.players.keys()], category as TierlistCategory, count);
+      if (!result.ok) return cb?.(result);
+      for (const player of room.players.values()) {
+        const snapshot = tierlist.snapshot(room.code, player.id);
+        if (snapshot && player.socketId) io.to(player.socketId).emit("game4:start", snapshot);
+      }
+      return cb?.({ ok: true });
+    }
+
     if (room.gameId === "game-3") {
       const selectedTime = room.settings.gameSettings?.timeLimit ?? 60;
       const validTime =
@@ -354,6 +380,34 @@ io.on("connection", (socket) => {
     cb?.(fauxFan.voteGuess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.accepted));
   });
 
+  socket.on("game4:request-state", (cb) => {
+    const snapshot = tierlist.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
+    if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
+    cb?.({ ok: true, snapshot });
+  });
+
+  socket.on("game4:place", (payload, cb) => {
+    const parsed = z.object({ itemId: z.number().int(), tier: z.enum(["S", "A", "B", "C", "D"]).nullable() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(tierlist.place(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.itemId, parsed.data.tier));
+  });
+
+  socket.on("game4:validate", (cb) => {
+    cb?.(tierlist.validate(socket.data.roomCode ?? "", socket.data.playerId ?? ""));
+  });
+
+  socket.on("game4:guess", (payload, cb) => {
+    const parsed = z.object({ text: z.string().max(160) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(tierlist.guess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.text));
+  });
+
+  socket.on("game4:judge", (payload, cb) => {
+    const parsed = z.object({ guessId: z.string(), accepted: z.boolean() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(tierlist.judge(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.guessId, parsed.data.accepted));
+  });
+
   socket.on("game3:request-state", (cb) => {
     const roomCode = socket.data.roomCode ?? "";
     const snapshot = petitBac.snapshot(roomCode);
@@ -432,6 +486,7 @@ io.on("connection", (socket) => {
       petitBac.removePlayer(roomCode, playerId);
       theOuCafe.removePlayer(roomCode, playerId);
       fauxFan.removePlayer(roomCode, playerId);
+      tierlist.removePlayer(roomCode, playerId);
     }
 
     if (result && result.room.players.size > 0) {
@@ -440,6 +495,7 @@ io.on("connection", (socket) => {
       petitBac.clear(roomCode);
       theOuCafe.clear(roomCode);
       fauxFan.clear(roomCode);
+      tierlist.clear(roomCode);
     }
   });
 });

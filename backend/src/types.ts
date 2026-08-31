@@ -16,6 +16,8 @@ export type RoomSettings = {
     timeLimit?: number;
     theOuCafeCategory?: "anime" | "character";
     fauxFanCategory?: "anime" | "character";
+    tierlistCategory?: "anime" | "character";
+    tierlistItemCount?: number;
   };
 };
 

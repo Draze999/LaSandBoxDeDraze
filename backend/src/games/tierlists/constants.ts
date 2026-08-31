@@ -1,0 +1,48 @@
+export const TIERLIST_TIERS = [
+  { id: "S", label: "S" }, { id: "A", label: "A" }, { id: "B", label: "B" },
+  { id: "C", label: "C" }, { id: "D", label: "D" },
+] as const;
+export type TierlistTier = typeof TIERLIST_TIERS[number]["id"];
+export type TierlistCategory = "anime" | "character";
+export const TIERLIST_ITEM_COUNTS = [10, 15, 20, 25, 30] as const;
+export type TierlistItemCount = typeof TIERLIST_ITEM_COUNTS[number];
+export const TIERLIST_THEMES = [
+  "Recommandations à quelqu'un qui débute les animés",
+  "A revoir encore une fois sans hésiter",
+  "Le meilleur charisme",
+  "Les meilleurs alliés",
+  "Les meilleurs ennemis",
+  "Le meilleur professeur",
+  "Le meilleur chef d'équipe",
+  "Le meilleur style visuel",
+  "La meilleure ambiance",
+  "Les meilleures musiques",
+  "Le meilleur humour",
+  "Le meilleur scénario",
+  "Le meilleur développement de personnage",
+  "La meilleure romance",
+  "La meilleure amitié",
+  "Le meilleur combat",
+  "Le meilleur opening",
+  "Le meilleur ending",
+  "Les plus sous-côtés",
+  "Pour une soirée tranquille",
+  "A regarder avec des amis",
+  "Le potentiel de mème",
+  "Le meilleur compagnon de voyage",
+  "Le meilleur voisin",
+  "Qui survivrait le mieux dans le monde réel",
+  "Qui serait le plus dangereux dans la vraie vie",
+  "Le meilleur protagoniste",
+  "Les meilleurs deutéragonistes",
+  "Le meilleur antagoniste",
+  "La meilleure évolution",
+  "Le meilleur impact émotionnel",
+  "Celui qui te manque le plus",
+  "Mérite une suite",
+  "Mérite un spin-off",
+  "Le plus de potentiel inexploité",
+  "Le meilleur potentiel de crossover",
+  "Le meilleur Worldbuilding",
+  "Tes préférés",
+] as const;

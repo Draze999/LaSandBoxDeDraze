@@ -3,6 +3,7 @@ import { socket } from "./socket";
 import PetitBac from "./games/petit-bac/PetitBac";
 import TheOuCafe from "./games/the-ou-cafe/TheOuCafe";
 import FauxFan from "./games/faux-fan/FauxFan";
+import Tierlists from "./games/tierlists/Tierlists";
 
 type Game = {
   id: string;
@@ -16,7 +17,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character" } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number } };
   players: Player[];
 };
 
@@ -133,17 +134,20 @@ export default function App() {
     const startGame3 = () => setStarted(true);
     const startGame1 = () => setStarted(true);
     const startGame2 = () => setStarted(true);
+    const startGame4 = () => setStarted(true);
     socket.on("room:updated", updated);
     socket.on("game:start", start);
     socket.on("game3:start", startGame3);
     socket.on("game1:start", startGame1);
     socket.on("game2:start", startGame2);
+    socket.on("game4:start", startGame4);
     return () => {
       socket.off("room:updated", updated);
       socket.off("game:start", start);
       socket.off("game3:start", startGame3);
       socket.off("game1:start", startGame1);
       socket.off("game2:start", startGame2);
+      socket.off("game4:start", startGame4);
     };
   }, []);
   const connect = () => {
@@ -159,7 +163,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime" } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10 } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -220,6 +224,22 @@ export default function App() {
             <span className="status"><i /> Partie en cours</span>
           </header>
           <FauxFan room={room} playerId={playerId} onExit={() => setStarted(false)} />
+        </main>
+      </div>
+    );
+
+  if (room && room.gameId === "game-4" && started)
+    return (
+      <div className="app">
+        <Background />
+        <main className="room-page">
+          <header className="topbar">
+            <button className="brand" onClick={() => setStarted(false)}>
+              <span className="brand-mark">A</span> L'Atelier de Draze
+            </button>
+            <span className="status"><i /> Partie en cours</span>
+          </header>
+          <Tierlists room={room} playerId={playerId} onExit={() => setStarted(false)} />
         </main>
       </div>
     );
@@ -351,6 +371,31 @@ export default function App() {
                       <option value="character">Personnage</option>
                     </select>
                   </label>
+                )}
+                {room.gameId === "game-4" && (
+                  <>
+                    <label>
+                      Type de contenu
+                      <select
+                        value={room.settings.gameSettings?.tierlistCategory ?? "anime"}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { tierlistCategory: e.target.value } })}
+                      >
+                        <option value="anime">Animés</option>
+                        <option value="character">Personnages</option>
+                      </select>
+                    </label>
+                    <label>
+                      Nombre d'éléments : <strong>{room.settings.gameSettings?.tierlistItemCount ?? 10}</strong>
+                      <input
+                        type="range" min={10} max={30} step={5}
+                        value={room.settings.gameSettings?.tierlistItemCount ?? 10}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { tierlistItemCount: Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
+                  </>
                 )}
                 {room.gameId === "game-3" && (
                   <label>
