@@ -63,7 +63,7 @@ const createSchema = z.object({
     name: z.string().trim().min(1).max(40).default("Ma partie"),
     maxPlayers: z.number().int().min(2).max(12).default(8),
     private: z.boolean().default(true),
-    gameSettings: gameSettingsSchema.default({ timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime" }),
+    gameSettings: gameSettingsSchema.optional(),
   }).default({
     name: "Ma partie",
     maxPlayers: 8,

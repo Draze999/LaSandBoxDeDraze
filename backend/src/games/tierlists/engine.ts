@@ -15,7 +15,31 @@ export class TierlistEngine {
   async start(roomCode: string, playerIds: string[], category: TierlistCategory, count: number) {
     if (playerIds.length < 2) return { ok:false as const, error:"NOT_ENOUGH_PLAYERS" };
     const validCount = TIERLIST_ITEM_COUNTS.includes(count as TierlistItemCount) ? count as TierlistItemCount : 10;
-    const items = category === "anime" ? (await getAllAnime()).map(x=>({id:Number(x.id),name:String(x.name),imageUrl:x.image_url ?? null,category:"anime" as const})) : (await getRandomCharacters(validCount)).map(x=>({id:Number(x.id),name:String(x.name),imageUrl:x.image_url ?? null,category:"character" as const}));
+    const animeRows = (await getAllAnime()) as Array<{
+      id: number | string;
+      name: string;
+      image_url?: string | null;
+    }>;
+    const characterRows = (await getRandomCharacters(validCount)) as Array<{
+      id: number | string;
+      name: string;
+      image_url?: string | null;
+    }>;
+
+    const items: import("./types.js").TierlistItem[] =
+      category === "anime"
+        ? animeRows.map((x) => ({
+            id: Number(x.id),
+            name: String(x.name),
+            imageUrl: x.image_url ?? null,
+            category: "anime" as const,
+          }))
+        : characterRows.map((x) => ({
+            id: Number(x.id),
+            name: String(x.name),
+            imageUrl: x.image_url ?? null,
+            category: "character" as const,
+          }));
     if (items.length < validCount) return { ok:false as const, error:"NOT_ENOUGH_ITEMS" };
     const selected = shuffle(items).slice(0, validCount);
     const previous = this.cumulative.get(roomCode) ?? {};
