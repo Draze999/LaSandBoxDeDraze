@@ -215,7 +215,7 @@
     flex-direction: column;
   }
 }
-@media (max-width: 60%) {
+@media (max-width: 600px) {
   .game5-page {
     width: calc(100% - 20px);
     margin: 20px auto;
