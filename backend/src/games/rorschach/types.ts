@@ -1,0 +1,34 @@
+export type RorschachPoint = { x: number; y: number };
+export type RorschachStroke = { id: string; playerId: string; points: RorschachPoint[] };
+export type RorschachGuess = { id: string; authorId: string; targetPlayerId: string; text: string; accepted: boolean | null };
+export type RorschachPhase = "drawing" | "guessing" | "judging" | "finished";
+export type RorschachState = {
+  phase: RorschachPhase;
+  playerOrder: string[];
+  base: RorschachPoint[];
+  strokes: RorschachStroke[];
+  colors: Record<string, string>;
+  validated: Record<string, boolean>;
+  endsAt: number;
+  currentPlayerIndex: number;
+  guesses: RorschachGuess[];
+  roundScores: Record<string, number>;
+  cumulativeScores: Record<string, number>;
+  roundNumber: number;
+};
+export type RorschachSnapshot = {
+  phase: RorschachPhase;
+  playerOrder: string[];
+  base: RorschachPoint[];
+  strokes: RorschachStroke[];
+  colors: Record<string, string>;
+  validated: Record<string, boolean>;
+  endsAt: number;
+  currentPlayerId: string | null;
+  currentPlayerIndex: number;
+  reviewTotal: number;
+  guesses: RorschachGuess[];
+  roundScores: Record<string, number>;
+  cumulativeScores: Record<string, number>;
+  roundNumber: number;
+};

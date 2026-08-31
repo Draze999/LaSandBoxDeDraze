@@ -20,6 +20,7 @@ import { TierlistEngine } from "./games/tierlists/engine.js";
 import type { FauxFanCategory } from "./games/faux-fan/constants.js";
 import { THE_OU_CAFE_CATEGORY_IDS, type TheOuCafeCategory } from "./games/the-ou-cafe/constants.js";
 import type { TierlistCategory } from "./games/tierlists/constants.js";
+import { RorschachEngine } from "./games/rorschach/engine.js";
 
 const app = Fastify({ logger: true });
 const PORT = Number(process.env.PORT ?? 3001);
@@ -39,7 +40,7 @@ const io = new SocketIOServer(app.server, {
 });
 
 const pseudo = z.string().trim().min(1).max(20);
-const game = z.enum(["game-1", "game-2", "game-3", "game-4"]);
+const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5"]);
 const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{5}$/);
 const timeLimit = z
   .number()
@@ -63,7 +64,7 @@ const createSchema = z.object({
     name: z.string().trim().min(1).max(40).default("Ma partie"),
     maxPlayers: z.number().int().min(2).max(12).default(8),
     private: z.boolean().default(true),
-    gameSettings: gameSettingsSchema.optional(),
+    gameSettings: gameSettingsSchema.default({ timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime" }),
   }).default({
     name: "Ma partie",
     maxPlayers: 8,
@@ -102,6 +103,16 @@ const tierlist = new TierlistEngine((roomCode) => {
     if (!player.socketId) continue;
     const snapshot = tierlist.snapshot(roomCode, player.id);
     if (snapshot) io.to(player.socketId).emit("game4:state", snapshot);
+  }
+});
+
+const rorschach = new RorschachEngine((roomCode) => {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    if (!player.socketId) continue;
+    const snapshot = rorschach.snapshot(roomCode, player.id);
+    if (snapshot) io.to(player.socketId).emit("game5:state", snapshot);
   }
 });
 
@@ -281,6 +292,16 @@ io.on("connection", (socket) => {
       return cb?.({ ok: true });
     }
 
+    if (room.gameId === "game-5") {
+      const result = rorschach.start(room.code, [...room.players.keys()]);
+      if (!result.ok) return cb?.(result);
+      for (const player of room.players.values()) {
+        const snapshot = rorschach.snapshot(room.code, player.id);
+        if (snapshot && player.socketId) io.to(player.socketId).emit("game5:start", snapshot);
+      }
+      return cb?.({ ok: true });
+    }
+
     if (room.gameId === "game-3") {
       const selectedTime = room.settings.gameSettings?.timeLimit ?? 60;
       const validTime =
@@ -408,6 +429,44 @@ io.on("connection", (socket) => {
     cb?.(tierlist.judge(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.guessId, parsed.data.accepted));
   });
 
+  socket.on("game5:request-state", (cb) => {
+    const snapshot = rorschach.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
+    if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
+    cb?.({ ok: true, snapshot });
+  });
+
+  socket.on("game5:stroke", (payload, cb) => {
+    const parsed = z.object({ points: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).min(2).max(500) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(rorschach.addStroke(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.points));
+  });
+
+  socket.on("game5:undo", (cb) => {
+    cb?.(rorschach.undo(socket.data.roomCode ?? "", socket.data.playerId ?? ""));
+  });
+
+  socket.on("game5:erase", (payload, cb) => {
+    const parsed = z.object({ points: z.array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })).min(1).max(500) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(rorschach.erase(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.points));
+  });
+
+  socket.on("game5:validate", (cb) => {
+    cb?.(rorschach.validate(socket.data.roomCode ?? "", socket.data.playerId ?? ""));
+  });
+
+  socket.on("game5:guess", (payload, cb) => {
+    const parsed = z.object({ text: z.string().max(160) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(rorschach.guess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.text));
+  });
+
+  socket.on("game5:judge", (payload, cb) => {
+    const parsed = z.object({ guessId: z.string(), accepted: z.boolean() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(rorschach.judge(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.guessId, parsed.data.accepted));
+  });
+
   socket.on("game3:request-state", (cb) => {
     const roomCode = socket.data.roomCode ?? "";
     const snapshot = petitBac.snapshot(roomCode);
@@ -487,6 +546,7 @@ io.on("connection", (socket) => {
       theOuCafe.removePlayer(roomCode, playerId);
       fauxFan.removePlayer(roomCode, playerId);
       tierlist.removePlayer(roomCode, playerId);
+      rorschach.removePlayer(roomCode, playerId);
     }
 
     if (result && result.room.players.size > 0) {
@@ -496,6 +556,7 @@ io.on("connection", (socket) => {
       theOuCafe.clear(roomCode);
       fauxFan.clear(roomCode);
       tierlist.clear(roomCode);
+      rorschach.clear(roomCode);
     }
   });
 });

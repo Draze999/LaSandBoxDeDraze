@@ -110,6 +110,7 @@ export default function TheOuCafe({
             Thé ou Café · Manche {game.roundNumber} terminée
           </p>
           <h1>Classement</h1>
+          {game.secret && <div className="game1-result-secret"><img src={game.secret.imageUrl ?? ""} alt=""/><div><small>Élément secret</small><strong>{game.secret.name}</strong>{game.category === "character" && game.secret.animeName && <span>{game.secret.animeName}</span>}</div></div>}
           <div className="game1-ranking">
             {ranking.map((p, i) => (
               <div className="game1-rank" key={p.id}>
@@ -147,11 +148,13 @@ export default function TheOuCafe({
           </div>
           {isTarget && (
             <div className="secret">
-              <small>Élément secret</small>
+              {game.secret?.imageUrl && <img src={game.secret.imageUrl} alt="" />}
+              <div><small>Élément secret</small>
               <strong>{game.secret?.name}</strong>
               {game.category === "character" && game.secret?.animeName && (
                 <span>{game.secret.animeName}</span>
               )}
+              </div>
             </div>
           )}
         </header>

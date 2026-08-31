@@ -4,6 +4,7 @@ import PetitBac from "./games/petit-bac/PetitBac";
 import TheOuCafe from "./games/the-ou-cafe/TheOuCafe";
 import FauxFan from "./games/faux-fan/FauxFan";
 import Tierlists from "./games/tierlists/Tierlists";
+import Rorschach from "./games/rorschach/Rorschach";
 
 type Game = {
   id: string;
@@ -46,9 +47,16 @@ const games: Game[] = [
   {
     id: "game-4",
     name: "Les Tierlists",
-    description: "Ce jeu lancera t-il un débat ?",
+    description: "Classe, devine, juge.",
     color: "#9a7042",
     icon: "📋",
+  },
+  {
+    id: "game-5",
+    name: "Le jeu de Rorschach",
+    description: "Qui sera le plus créatif ?",
+    color: "#7b5bb5",
+    icon: "✏️",
   },
 ];
 
@@ -135,12 +143,14 @@ export default function App() {
     const startGame1 = () => setStarted(true);
     const startGame2 = () => setStarted(true);
     const startGame4 = () => setStarted(true);
+    const startGame5 = () => setStarted(true);
     socket.on("room:updated", updated);
     socket.on("game:start", start);
     socket.on("game3:start", startGame3);
     socket.on("game1:start", startGame1);
     socket.on("game2:start", startGame2);
     socket.on("game4:start", startGame4);
+    socket.on("game5:start", startGame5);
     return () => {
       socket.off("room:updated", updated);
       socket.off("game:start", start);
@@ -148,6 +158,7 @@ export default function App() {
       socket.off("game1:start", startGame1);
       socket.off("game2:start", startGame2);
       socket.off("game4:start", startGame4);
+      socket.off("game5:start", startGame5);
     };
   }, []);
   const connect = () => {
@@ -240,6 +251,22 @@ export default function App() {
             <span className="status"><i /> Partie en cours</span>
           </header>
           <Tierlists room={room} playerId={playerId} onExit={() => setStarted(false)} />
+        </main>
+      </div>
+    );
+
+  if (room && room.gameId === "game-5" && started)
+    return (
+      <div className="app">
+        <Background />
+        <main className="room-page">
+          <header className="topbar">
+            <button className="brand" onClick={() => setStarted(false)}>
+              <span className="brand-mark">A</span> L'Atelier de Draze
+            </button>
+            <span className="status"><i /> Partie en cours</span>
+          </header>
+          <Rorschach room={room} playerId={playerId} onExit={() => setStarted(false)} />
         </main>
       </div>
     );
@@ -483,7 +510,7 @@ export default function App() {
             </label>
             <div className="label-line">
               <span>Choisis un jeu</span>
-              <span className="optional">4 disponibles</span>
+              <span className="optional">5 disponibles</span>
             </div>
             <div className="games">
               {games.map((g) => (

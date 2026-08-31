@@ -1,4 +1,4 @@
-export type GameId = "game-1" | "game-2" | "game-3" | "game-4";
+export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5";
 
 export type Player = {
   id: string;

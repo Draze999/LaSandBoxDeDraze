@@ -304,3 +304,5 @@
     font-size: 10px;
   }
 }
+
+.game1-result-secret{display:flex;align-items:center;gap:14px;margin:18px 0;padding:12px 16px;border:1px solid #2b3544;border-radius:14px;background:#111722}.game1-result-secret img{width:58px;height:76px;object-fit:cover;border-radius:9px;background:#202735}.game1-result-secret div{display:flex;flex-direction:column;gap:3px}.game1-result-secret small{color:#7f8b9e;text-transform:uppercase;font-size:9px}.game1-result-secret strong{color:#e5e9f1}.game1-result-secret span{color:#929db0;font-size:11px}.secret{display:flex;align-items:center;gap:10px}.secret img{width:50px;height:66px;object-fit:cover;border-radius:8px;background:#202735}.secret>div{display:flex;flex-direction:column;gap:3px}.secret span{color:#91bda9;font-size:11px}

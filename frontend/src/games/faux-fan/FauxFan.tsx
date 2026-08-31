@@ -148,11 +148,12 @@ export default function FauxFan({ room, playerId, onExit }: Props) {
     return <main className="game2-page">
       <section className="game2-shell">
         <header className="game2-header"><div><p className="eyebrow">Le Faux Fan · Manche {game.roundNumber} terminée</p><h1>Classement</h1><p className="game2-subtitle">Le secret était <strong>{game.secret?.name ?? "inconnu"}</strong>{game.category === "character" && game.secret?.animeName ? ` · ${game.secret.animeName}` : ""}.</p></div><div className="game2-secret-badge">🎭</div></header>
+        {game.secret && <div className="game2-result-secret"><img src={game.secret.imageUrl ?? ""} alt=""/><div><small>Secret</small><strong>{game.secret.name}</strong>{game.category === "character" && game.secret.animeName && <span>{game.secret.animeName}</span>}</div></div>}
         <div className="game2-result-banner">
           <strong>{game.result?.intruderWon ? `L'intrus, ${player(game.intruderId ?? "")}, gagne la manche.` : `L'intrus, ${player(game.intruderId ?? "")}, a été démasqué.`}</strong>
           {game.result?.correctGuess !== null && <span>{game.result?.correctGuess ? "Son identification du secret est correcte." : "Son identification du secret est incorrecte."}</span>}
         </div>
-        <div className="game2-ranking">{ranking.map((p, i) => <div className="game2-rank" key={p.id}><span>#{i + 1}</span><i>{p.pseudo[0]?.toUpperCase()}</i><strong>{p.pseudo}{p.id === playerId && <small> VOUS</small>}</strong><b>{p.total} <em>(+{p.gain})</em></b></div>)}</div>
+        <div className="game2-ranking">{ranking.map((p, i) => <div className={`game2-rank ${p.id === game.intruderId ? "intruder" : "innocent"}`} key={p.id}><span>#{i + 1}</span><i>{p.pseudo[0]?.toUpperCase()}</i><strong>{p.pseudo}{p.id === playerId && <small> VOUS</small>}</strong><b>{p.total} <em>(+{p.gain})</em></b></div>)}</div>
         <button className="primary purple" onClick={onExit}>Retour à la room <span>←</span></button>
       </section>
     </main>;
@@ -171,11 +172,13 @@ export default function FauxFan({ room, playerId, onExit }: Props) {
           </div>
         ) : game.secret ? (
           <div className="game2-secret">
-            <small>Secret</small>
+            {game.secret.imageUrl && <img src={game.secret.imageUrl} alt="" />}
+            <div><small>Secret</small>
             <strong>{game.secret.name}</strong>
             {game.category === "character" && game.secret.animeName && (
               <span>{game.secret.animeName}</span>
             )}
+            </div>
           </div>
         ) : null}
       </header>

@@ -179,8 +179,8 @@ export class TheOuCafeEngine {
       cumulativeScores: this.cumulative.get(roomCode) ?? {},
       roundNumber: s.roundNumber,
     };
-    if (playerId !== s.targetPlayerId) delete snap.secret;
-    else snap.secret = s.secret;
+    if (s.phase === "finished" || playerId === s.targetPlayerId) snap.secret = s.secret;
+    else delete snap.secret;
     return snap;
   }
 
