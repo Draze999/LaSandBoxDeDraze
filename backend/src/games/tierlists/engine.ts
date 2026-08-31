@@ -1,7 +1,10 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { getAllAnime, getRandomCharacters } from "../../database/anime.js";
 import { TIERLIST_ITEM_COUNTS, TIERLIST_THEMES, type TierlistCategory, type TierlistItemCount, type TierlistTier } from "./constants.js";
-import type { TierlistBoard, TierlistGuess, TierlistSnapshot, TierlistState } from "./types.js";
+import type { TierlistBoard, TierlistGuess, TierlistItem, TierlistSnapshot, TierlistState } from "./types.js";
+
+type AnimeRow = { id: number | string; name: string; image_url?: string | null };
+type CharacterRow = { id: number | string; name: string; image_url?: string | null };
 
 type Callback = (roomCode: string) => void;
 const shuffle = <T,>(items: T[]) => { for (let i=items.length-1;i>0;i--){ const j=randomInt(i+1); [items[i],items[j]]=[items[j],items[i]]; } return items; };
@@ -15,7 +18,11 @@ export class TierlistEngine {
   async start(roomCode: string, playerIds: string[], category: TierlistCategory, count: number) {
     if (playerIds.length < 2) return { ok:false as const, error:"NOT_ENOUGH_PLAYERS" };
     const validCount = TIERLIST_ITEM_COUNTS.includes(count as TierlistItemCount) ? count as TierlistItemCount : 10;
-    const items = category === "anime" ? (await getAllAnime()).map(x=>({id:Number(x.id),name:String(x.name),imageUrl:x.image_url ?? null,category:"anime" as const})) : (await getRandomCharacters(validCount)).map(x=>({id:Number(x.id),name:String(x.name),imageUrl:x.image_url ?? null,category:"character" as const}));
+    const animeRows = (await getAllAnime()) as AnimeRow[];
+    const characterRows = (await getRandomCharacters(validCount)) as CharacterRow[];
+    const items: TierlistItem[] = category === "anime"
+      ? animeRows.map((x: AnimeRow): TierlistItem => ({ id: Number(x.id), name: String(x.name), imageUrl: x.image_url ?? null, category: "anime" }))
+      : characterRows.map((x: CharacterRow): TierlistItem => ({ id: Number(x.id), name: String(x.name), imageUrl: x.image_url ?? null, category: "character" }));
     if (items.length < validCount) return { ok:false as const, error:"NOT_ENOUGH_ITEMS" };
     const selected = shuffle(items).slice(0, validCount);
     const previous = this.cumulative.get(roomCode) ?? {};
