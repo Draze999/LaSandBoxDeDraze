@@ -62,7 +62,7 @@ export default function Tierlists({ room, playerId, onExit }: Props) {
       socket.emit("game4:request-state", (r: any) => {
         if (r?.ok && r.snapshot) setGame(r.snapshot);
       });
-    }, 1000);
+    }, 500);
 
     return () => {
       window.clearInterval(sync);

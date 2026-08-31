@@ -42,7 +42,7 @@ export default function Rorschach({room,playerId,onExit}:{room:Room;playerId:str
   const [game,setGame]=useState<Snapshot|null>(null),[guess,setGuess]=useState(""),[error,setError]=useState(""),[now,setNow]=useState(Date.now()),[tool,setTool]=useState<"pencil"|"eraser">("pencil"),[preview,setPreview]=useState<Point[]>([]);
   const canvasRef=useRef<HTMLCanvasElement>(null);const drawing=useRef(false);const currentStroke=useRef<Point[]>([]);
   const player=(id:string)=>room.players.find(p=>p.id===id)?.pseudo??"Joueur";
-  useEffect(()=>{const start=(s:Snapshot)=>{setGame(s);setGuess("");setError("");setPreview([])};const state=(s:Snapshot)=>setGame(s);socket.on("game5:start",start);socket.on("game5:state",state);socket.emit("game5:request-state",(r:any)=>r?.ok&&setGame(r.snapshot));return()=>{socket.off("game5:start",start);socket.off("game5:state",state)}},[]);
+  useEffect(()=>{const start=(s:Snapshot)=>{setGame(s);setGuess("");setError("");setPreview([])};const state=(s:Snapshot)=>setGame(s);socket.on("game5:start",start);socket.on("game5:state",state);const requestState=()=>socket.emit("game5:request-state",(r:any)=>{if(r?.ok&&r.snapshot)setGame(r.snapshot)});requestState();const sync=window.setInterval(requestState,500);return()=>{window.clearInterval(sync);socket.off("game5:start",start);socket.off("game5:state",state)}},[]);
   useEffect(()=>{const id=window.setInterval(()=>setNow(Date.now()),100);return()=>clearInterval(id)},[]);
   const remaining=game?.phase==="drawing"?Math.max(0,Math.ceil((game.endsAt-now)/1000)):0;
   const emit=(event:string,payload?:any)=>socket.emit(event,payload,(r:any)=>{if(!r?.ok)setError(r?.error??"Une erreur est survenue.");else setError("")});
