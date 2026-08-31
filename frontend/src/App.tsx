@@ -46,7 +46,7 @@ const games: Game[] = [
   {
     id: "game-4",
     name: "Les Tierlists",
-    description: "Work In Progress",
+    description: "Ce jeu lancera t-il un débat ?",
     color: "#9a7042",
     icon: "📋",
   },

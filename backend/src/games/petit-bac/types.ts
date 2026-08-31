@@ -30,6 +30,7 @@ export type PetitBacState = {
   answers: Map<string, PetitBacPlayerState>;
   scores: Record<string, number>;
   advancing: boolean;
+  submittedPlayers: Record<string, boolean>;
 };
 
 export type PetitBacSnapshot = {
@@ -46,4 +47,5 @@ export type PetitBacSnapshot = {
   scores: Record<string, number>;
   roundScores: Record<string, number>;
   cumulativeScores: Record<string, number>;
+  submittedPlayers: Record<string, boolean>;
 };

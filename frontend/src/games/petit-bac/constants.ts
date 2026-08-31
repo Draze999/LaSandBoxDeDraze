@@ -36,4 +36,5 @@ export type PetitBacSnapshot = {
   scores: Record<string, number>;
   roundScores: Record<string, number>;
   cumulativeScores: Record<string, number>;
+  submittedPlayers: Record<string, boolean>;
 };

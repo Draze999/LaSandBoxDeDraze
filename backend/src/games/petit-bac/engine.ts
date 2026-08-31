@@ -79,6 +79,7 @@ export class PetitBacEngine {
       answers: new Map(playerIds.map((id) => [id, createPlayerState(id)])),
       scores: Object.fromEntries(playerIds.map((id) => [id, 0])),
       advancing: false,
+      submittedPlayers: Object.fromEntries(playerIds.map((id) => [id, false])),
     };
 
     this.states.set(roomCode, state);
@@ -118,7 +119,19 @@ export class PetitBacEngine {
       }
     }
 
-    return { ok: true as const };
+    state.submittedPlayers[playerId] = true;
+
+    const allSubmitted = [...state.answers.keys()].every(
+      (id) => state.submittedPlayers[id],
+    );
+
+    if (allSubmitted) {
+      this.startReview(roomCode);
+      return { ok: true as const, advanced: true };
+    }
+
+    this.callbacks.onState(roomCode);
+    return { ok: true as const, advanced: false };
   }
 
   vote(
@@ -217,6 +230,10 @@ export class PetitBacEngine {
     const state = this.states.get(roomCode);
     if (!state || state.phase !== "playing") return;
 
+    const timer = this.timers.get(roomCode);
+    if (timer) clearTimeout(timer);
+    this.timers.delete(roomCode);
+
     state.phase = "reviewing";
     state.reviewIndex = 0;
     state.reviewOrder = [...state.answers.keys()];
@@ -296,6 +313,7 @@ export class PetitBacEngine {
       scores: state.scores,
       roundScores,
       cumulativeScores,
+      submittedPlayers: state.submittedPlayers,
     };
   }
 
@@ -304,6 +322,7 @@ export class PetitBacEngine {
     if (!state) return;
 
     state.answers.delete(playerId);
+    delete state.submittedPlayers[playerId];
     delete state.scores[playerId];
     const cumulative = this.cumulativeScores.get(roomCode);
     if (cumulative) delete cumulative[playerId];

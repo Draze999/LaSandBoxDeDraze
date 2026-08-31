@@ -51,6 +51,9 @@ export default function PetitBac({ room, playerId, onExit }: Props) {
 
     const onState = (snapshot: PetitBacSnapshot) => {
       setGame(snapshot);
+      if (snapshot.phase === "playing") {
+        setSubmitted(Boolean(snapshot.submittedPlayers?.[playerId]));
+      }
     };
 
     socket.on("game3:start", onStart);
@@ -61,6 +64,9 @@ export default function PetitBac({ room, playerId, onExit }: Props) {
     socket.emit("game3:request-state", (result: any) => {
       if (result?.ok && result.snapshot) {
         setGame(result.snapshot);
+        if (result.snapshot.phase === "playing") {
+          setSubmitted(Boolean(result.snapshot.submittedPlayers?.[playerId]));
+        }
       }
     });
 

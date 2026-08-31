@@ -58,7 +58,17 @@ export default function Tierlists({ room, playerId, onExit }: Props) {
     const state = (snapshot: TierlistSnapshot) => setGame(snapshot);
     socket.on("game4:start", start); socket.on("game4:state", state);
     socket.emit("game4:request-state", (r: any) => { if (r?.ok) setGame(r.snapshot); });
-    return () => { socket.off("game4:start", start); socket.off("game4:state", state); };
+    const sync = window.setInterval(() => {
+      socket.emit("game4:request-state", (r: any) => {
+        if (r?.ok && r.snapshot) setGame(r.snapshot);
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(sync);
+      socket.off("game4:start", start);
+      socket.off("game4:state", state);
+    };
   }, []);
 
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 100); return () => clearInterval(id); }, []);
