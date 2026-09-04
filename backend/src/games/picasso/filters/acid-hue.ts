@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"acid-hue", name:"Acide chromatique", apply: async image => image.modulate({ saturation: 4, brightness: 1.15, hue: 145 }).linear(1.15, -18) };

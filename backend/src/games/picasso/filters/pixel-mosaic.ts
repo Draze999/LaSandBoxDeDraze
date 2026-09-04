@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"pixel-mosaic", name:"Mosaïque pixel", apply: async image => { const m=await image.metadata(); const w=m.width??800,h=m.height??800; return image.resize(Math.max(16,Math.floor(w/18)),Math.max(16,Math.floor(h/18)),{fit:"fill"}).resize(w,h,{fit:"fill",kernel:"nearest"}); } };

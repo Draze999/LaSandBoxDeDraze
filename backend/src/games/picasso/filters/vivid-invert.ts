@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"vivid-invert", name:"Inversion acide", apply: async image => image.negate().modulate({saturation:4,brightness:1.3,hue:220}) };

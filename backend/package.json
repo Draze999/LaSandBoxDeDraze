@@ -3,13 +3,22 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "tsx watch src/server.ts", "build": "tsc", "start": "node dist/server.js" },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
   "dependencies": {
     "@fastify/cors": "latest",
     "@supabase/supabase-js": "latest",
     "fastify": "latest",
     "socket.io": "latest",
-    "zod": "latest"
+    "zod": "latest",
+    "sharp": "latest"
   },
-  "devDependencies": { "@types/node": "latest", "tsx": "latest", "typescript": "latest" }
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
 }

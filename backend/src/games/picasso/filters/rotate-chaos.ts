@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"rotate-chaos", name:"Rotation chaotique", apply: async image => image.rotate(Math.random()*36-18,{background:{r:Math.floor(Math.random()*100),g:0,b:Math.floor(Math.random()*120),alpha:1}}) };

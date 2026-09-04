@@ -1,0 +1,2 @@
+import sharp from "sharp"; import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"picasso", name:"Picasso", apply: async image => { const m=await image.metadata(); const w=m.width??800,h=m.height??800; const a=Math.random()*.35-.175,b=Math.random()*.3-.15; return image.affine([[1,a],[b,1]],{background:"#100018"}).rotate(Math.random()*24-12).resize(w,h,{fit:"fill"}).modulate({saturation:2.2,hue:Math.random()*360}); } };

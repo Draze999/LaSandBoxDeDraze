@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"comic", name:"Comic extrême", apply: async image => image.grayscale().linear(2.8,-210).negate({alpha:false}).modulate({saturation:3}) };

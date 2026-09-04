@@ -6,6 +6,7 @@ import FauxFan from "./games/faux-fan/FauxFan";
 import Tierlists from "./games/tierlists/Tierlists";
 import Rorschach from "./games/rorschach/Rorschach";
 import ScrambledEggs from "./games/scrambled-eggs/ScrambledEggs";
+import Picasso from "./games/picasso/Picasso";
 
 type Game = {
   id: string;
@@ -19,7 +20,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number } };
   players: Player[];
 };
 
@@ -68,6 +69,13 @@ const games: Game[] = [
     description: "Remets les lettres dans le bon ordre.",
     color: "#ecc162",
     icon: "🍳",
+  },
+  {
+    id: "game-7",
+    name: "Picasso",
+    description: "Reconnais l'image malgré le chaos.",
+    color: "#d34a9a",
+    icon: "🎨",
   },
 ];
 
@@ -156,6 +164,7 @@ export default function App() {
     const startGame4 = () => setStarted(true);
     const startGame5 = () => setStarted(true);
     const startGame6 = () => setStarted(true);
+    const startGame7 = () => setStarted(true);
 
     const restore = () => {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -192,6 +201,7 @@ export default function App() {
     socket.on("game4:start", startGame4);
     socket.on("game5:start", startGame5);
     socket.on("game6:start", startGame6);
+    socket.on("game7:start", startGame7);
 
     if (socket.connected) restore();
     else if (localStorage.getItem(SESSION_KEY)) socket.connect();
@@ -206,6 +216,7 @@ export default function App() {
       socket.off("game4:start", startGame4);
       socket.off("game5:start", startGame5);
       socket.off("game6:start", startGame6);
+      socket.off("game7:start", startGame7);
     };
   }, []);
   const connect = () => {
@@ -221,7 +232,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300 } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300 } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -367,6 +378,22 @@ export default function App() {
             <span className="status"><i /> Partie en cours</span>
           </header>
           <ScrambledEggs room={room} playerId={playerId} onExit={() => setStarted(false)} />
+        </main>
+      </div>
+    );
+
+  if (room && room.gameId === "game-7" && started)
+    return (
+      <div className="app">
+        <Background />
+        <main className="room-page">
+          <header className="topbar">
+            <button className="brand" onClick={() => setStarted(false)}>
+              <span className="brand-mark">A</span> L'Atelier de Draze
+            </button>
+            <span className="status"><i /> Partie en cours</span>
+          </header>
+          <Picasso room={room} playerId={playerId} onExit={() => setStarted(false)} />
         </main>
       </div>
     );
@@ -559,6 +586,31 @@ export default function App() {
                         value={(room.settings.gameSettings?.scrambledEggsTimeLimit ?? 300) > 300 ? 330 : (room.settings.gameSettings?.scrambledEggsTimeLimit ?? 300)}
                         disabled={room.hostId !== playerId}
                         onChange={(e) => update({ gameSettings: { scrambledEggsTimeLimit: Number(e.target.value) > 300 ? 301 : Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
+                  </>
+                )}
+                {room.gameId === "game-7" && (
+                  <>
+                    <label>
+                      Type de contenu
+                      <select
+                        value={room.settings.gameSettings?.picassoCategory ?? "anime"}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { picassoCategory: e.target.value } })}
+                      >
+                        <option value="anime">Animé</option>
+                        <option value="character">Personnage</option>
+                      </select>
+                    </label>
+                    <label>
+                      Temps limite : <strong>{(room.settings.gameSettings?.picassoTimeLimit ?? 300) > 300 ? "Aucune limite" : `${room.settings.gameSettings?.picassoTimeLimit ?? 300}s`}</strong>
+                      <input
+                        type="range" min={30} max={330} step={30}
+                        value={(room.settings.gameSettings?.picassoTimeLimit ?? 300) > 300 ? 330 : (room.settings.gameSettings?.picassoTimeLimit ?? 300)}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { picassoTimeLimit: Number(e.target.value) > 300 ? 301 : Number(e.target.value) } })}
                         style={{ width: "100%" }}
                       />
                     </label>

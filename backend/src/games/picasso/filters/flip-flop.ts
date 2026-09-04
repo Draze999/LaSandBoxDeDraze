@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"flip-flop", name:"Miroir fou", apply: async image => { let x=image; if(Math.random()<.5)x=x.flop(); if(Math.random()<.7)x=x.flip(); return x; } };

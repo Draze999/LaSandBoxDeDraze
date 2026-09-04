@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"shear", name:"Cisaillement", apply: async image => { const m=await image.metadata(); const w=m.width??800,h=m.height??800; return image.affine([[1,Math.random()*.8-.4],[Math.random()*.25-.125,1]],{background:"#151020"}).resize(w,h,{fit:"fill"}); } };

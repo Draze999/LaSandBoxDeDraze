@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"sepia-inferno", name:"Enfer sépia", apply: async image => image.grayscale().tint({r:255,g:55,b:10}).modulate({saturation:2.5,brightness:1.2}) };

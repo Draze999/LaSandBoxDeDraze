@@ -27,6 +27,8 @@ import type { TierlistCategory } from "./games/tierlists/constants.js";
 import { RorschachEngine } from "./games/rorschach/engine.js";
 import { ScrambledEggsEngine } from "./games/scrambled-eggs/engine.js";
 import type { ScrambledEggsCategory } from "./games/scrambled-eggs/constants.js";
+import { PicassoEngine } from "./games/picasso/engine.js";
+import type { PicassoCategory } from "./games/picasso/types.js";
 
 const app = Fastify({ logger: true });
 const PORT = Number(process.env.PORT ?? 3001);
@@ -50,7 +52,7 @@ const io = new SocketIOServer(app.server, {
 });
 
 const pseudo = z.string().trim().min(1).max(20);
-const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5", "game-6"]);
+const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5", "game-6", "game-7"]);
 const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{5}$/);
 const timeLimit = z.number().int().min(20).max(240).refine((value) => value % 5 === 0);
 const tierlistTimeLimit = z.number().int().min(120).max(1200).refine((value) => value % 30 === 0);
@@ -65,6 +67,8 @@ const gameSettingsSchema = z.object({
   tierlistTimeLimit: tierlistTimeLimit.default(300),
   scrambledEggsCategory: z.enum(["anime", "character"]).default("anime"),
   scrambledEggsTimeLimit: scrambledEggsTimeLimit.default(300),
+  picassoCategory: z.enum(["anime", "character"]).default("anime"),
+  picassoTimeLimit: scrambledEggsTimeLimit.default(300),
 });
 
 const gameSettingsUpdateSchema = z.object({
@@ -76,6 +80,8 @@ const gameSettingsUpdateSchema = z.object({
   tierlistTimeLimit: tierlistTimeLimit.optional(),
   scrambledEggsCategory: z.enum(["anime", "character"]).optional(),
   scrambledEggsTimeLimit: scrambledEggsTimeLimit.optional(),
+  picassoCategory: z.enum(["anime", "character"]).optional(),
+  picassoTimeLimit: scrambledEggsTimeLimit.optional(),
 });
 
 const createSchema = z.object({
@@ -90,7 +96,7 @@ const createSchema = z.object({
     name: "Ma partie",
     maxPlayers: 8,
     private: true,
-    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300 },
+    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300 },
   }),
 });
 
@@ -160,6 +166,16 @@ const scrambledEggs = new ScrambledEggsEngine((roomCode) => {
   }
 });
 
+const picasso = new PicassoEngine((roomCode) => {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    if (!player.socketId) continue;
+    const snapshot = picasso.snapshot(roomCode, player.id);
+    if (snapshot) io.to(player.socketId).emit("game7:state", snapshot);
+  }
+});
+
 app.get("/health", async () => ({ ok: true, service: "roomhub-backend" }));
 
 app.get("/api/rooms/:code", async (req, reply) => {
@@ -179,6 +195,7 @@ function clearGame(roomCode: string) {
   tierlist.clear(roomCode);
   rorschach.clear(roomCode);
   scrambledEggs.clear(roomCode);
+  picasso.clear(roomCode);
 }
 
 function isGameStarted(roomCode: string, gameId: GameId) {
@@ -186,6 +203,7 @@ function isGameStarted(roomCode: string, gameId: GameId) {
   if (gameId === "game-2") return !!fauxFan.get(roomCode);
   if (gameId === "game-3") return !!petitBac.get(roomCode);
   if (gameId === "game-4") return !!tierlist.get(roomCode);
+  if (gameId === "game-7") return !!picasso.get(roomCode);
   if (gameId === "game-6") {
     const room = getRoom(roomCode);
     if (!room) return false;
@@ -339,6 +357,7 @@ io.on("connection", (socket) => {
     petitBac.removePlayer(roomCode, playerId);
     rorschach.removePlayer(roomCode, playerId);
     scrambledEggs.removePlayer(roomCode, playerId);
+    picasso.removePlayer(roomCode, playerId);
 
     if (result.room.players.size > 0) {
       io.to(roomCode).emit("room:updated", serializeRoom(result.room));
@@ -457,6 +476,19 @@ io.on("connection", (socket) => {
       for (const player of room.players.values()) {
         const snapshot = scrambledEggs.snapshot(room.code, player.id);
         if (snapshot && player.socketId) io.to(player.socketId).emit("game6:start", snapshot);
+      }
+      return cb?.({ ok: true });
+    }
+
+    if (room.gameId === "game-7") {
+      const category = room.settings.gameSettings?.picassoCategory ?? "anime";
+      const rawTime = room.settings.gameSettings?.picassoTimeLimit ?? 300;
+      const selectedTime = rawTime >= 30 && rawTime <= 301 ? rawTime : 301;
+      const result = await picasso.start(room.code, [...room.players.keys()], category as PicassoCategory, selectedTime);
+      if (!result.ok) return cb?.(result);
+      for (const player of room.players.values()) {
+        const snapshot = picasso.snapshot(room.code, player.id);
+        if (snapshot && player.socketId) io.to(player.socketId).emit("game7:start", snapshot);
       }
       return cb?.({ ok: true });
     }
@@ -733,6 +765,22 @@ io.on("connection", (socket) => {
     const parsed = z.object({ text: z.string().max(120) }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
     cb?.(scrambledEggs.guess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.text));
+  });
+
+  socket.on("game7:request-state", (cb) => {
+    const snapshot = picasso.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
+    if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
+    cb?.({ ok: true, snapshot });
+  });
+
+  socket.on("game7:guess", (payload, cb) => {
+    const parsed = z.object({ text: z.string().max(160) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(picasso.guess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.text));
+  });
+
+  socket.on("game7:abandon", (cb) => {
+    cb?.(picasso.abandon(socket.data.roomCode ?? "", socket.data.playerId ?? ""));
   });
 
   socket.on("disconnect", () => {

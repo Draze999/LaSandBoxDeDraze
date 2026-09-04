@@ -1,0 +1,23 @@
+import { filter as negative } from "./negative.js";
+import { filter as acid_hue } from "./acid-hue.js";
+import { filter as psychedelic } from "./psychedelic.js";
+import { filter as posterize } from "./posterize.js";
+import { filter as pixel_mosaic } from "./pixel-mosaic.js";
+import { filter as blur_storm } from "./blur-storm.js";
+import { filter as edge_crush } from "./edge-crush.js";
+import { filter as color_shock } from "./color-shock.js";
+import { filter as glass_warp } from "./glass-warp.js";
+import { filter as shear } from "./shear.js";
+import { filter as rotate_chaos } from "./rotate-chaos.js";
+import { filter as flip_flop } from "./flip-flop.js";
+import { filter as comic } from "./comic.js";
+import { filter as sepia_inferno } from "./sepia-inferno.js";
+import { filter as channel_split } from "./channel-split.js";
+import { filter as contrast_collapse } from "./contrast-collapse.js";
+import { filter as median_melt } from "./median-melt.js";
+import { filter as vivid_invert } from "./vivid-invert.js";
+import { filter as hexagons } from "./hexagons.js";
+import { filter as picasso } from "./picasso.js";
+import { filter as neon_ghost } from "./neon-ghost.js";
+
+export const PICASSO_FILTERS = [negative, acid_hue, psychedelic, posterize, pixel_mosaic, blur_storm, edge_crush, color_shock, glass_warp, shear, rotate_chaos, flip_flop, comic, sepia_inferno, channel_split, contrast_collapse, median_melt, vivid_invert, hexagons, picasso, neon_ghost];

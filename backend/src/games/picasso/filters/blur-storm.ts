@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"blur-storm", name:"Tempête de flou", apply: async image => image.blur(9).sharpen(1).modulate({saturation:2.2}) };

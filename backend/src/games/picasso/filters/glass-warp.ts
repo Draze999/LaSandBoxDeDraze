@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"glass-warp", name:"Verre déformant", apply: async image => { const m=await image.metadata(); const w=m.width??800,h=m.height??800; return image.resize({width:w+80,height:h+40,fit:"fill"}).affine([[1,Math.random()*.55-.275],[Math.random()*.35-.175,1]],{background:{r:0,g:0,b:0,alpha:0}}).resize(w,h,{fit:"fill"}); } };

@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"edge-crush", name:"Contours écrasés", apply: async image => image.convolve({width:3,height:3,kernel:[-3,-3,-3,-3,25,-3,-3,-3,-3]}).linear(1.5,-50) };

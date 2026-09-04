@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"contrast-collapse", name:"Contraste atomique", apply: async image => image.linear(3.5,-260).modulate({saturation:3.2}) };

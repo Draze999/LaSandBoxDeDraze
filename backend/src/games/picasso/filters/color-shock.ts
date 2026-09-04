@@ -1,0 +1,2 @@
+import type { PicassoFilter } from "./types.js";
+export const filter: PicassoFilter = { id:"color-shock", name:"Choc de couleurs", apply: async image => image.modulate({saturation:5,brightness:1.25,hue:Math.floor(Math.random()*360)}).sharpen(2) };
