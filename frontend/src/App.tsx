@@ -22,6 +22,9 @@ type Room = {
   players: Player[];
 };
 
+type StoredSession = { roomCode: string; playerId: string; reconnectToken: string };
+const SESSION_KEY = "atelier-draze-room-session";
+
 const games: Game[] = [
   {
     id: "game-1",
@@ -144,6 +147,32 @@ export default function App() {
     const startGame2 = () => setStarted(true);
     const startGame4 = () => setStarted(true);
     const startGame5 = () => setStarted(true);
+
+    const restore = () => {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return;
+      let saved: StoredSession;
+      try {
+        saved = JSON.parse(raw) as StoredSession;
+      } catch {
+        localStorage.removeItem(SESSION_KEY);
+        return;
+      }
+      socket.emit("room:reconnect", saved, (r: any) => {
+        if (!r?.ok) {
+          localStorage.removeItem(SESSION_KEY);
+          setRoom(null);
+          setStarted(false);
+          return;
+        }
+        setPlayerId(r.playerId);
+        setRoom(r.room);
+        setStarted(Boolean(r.started));
+      });
+    };
+
+    const connected = () => restore();
+    socket.on("connect", connected);
     socket.on("room:updated", updated);
     socket.on("game:start", start);
     socket.on("game3:start", startGame3);
@@ -151,7 +180,12 @@ export default function App() {
     socket.on("game2:start", startGame2);
     socket.on("game4:start", startGame4);
     socket.on("game5:start", startGame5);
+
+    if (socket.connected) restore();
+    else if (localStorage.getItem(SESSION_KEY)) socket.connect();
+
     return () => {
+      socket.off("connect", connected);
       socket.off("room:updated", updated);
       socket.off("game:start", start);
       socket.off("game3:start", startGame3);
@@ -180,6 +214,7 @@ export default function App() {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
         setPlayerId(r.playerId);
         setRoom(r.room);
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode: r.room.code, playerId: r.playerId, reconnectToken: r.reconnectToken } satisfies StoredSession));
       },
     );
   };
@@ -201,6 +236,7 @@ export default function App() {
         );
       setPlayerId(r.playerId);
       setRoom(r.room);
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode: r.room.code, playerId: r.playerId, reconnectToken: r.reconnectToken } satisfies StoredSession));
     });
   };
   const update = (patch: any) =>
@@ -307,9 +343,14 @@ export default function App() {
             <button
               className="brand"
               onClick={() => {
-                socket.disconnect();
-                setRoom(null);
-                setStarted(false);
+                const leave = () => {
+                  localStorage.removeItem(SESSION_KEY);
+                  socket.disconnect();
+                  setRoom(null);
+                  setStarted(false);
+                };
+                if (socket.connected) socket.emit("room:leave", leave);
+                else leave();
               }}
             >
               <span className="brand-mark">A</span> L'Atelier de Draze

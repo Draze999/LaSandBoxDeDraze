@@ -6,4 +6,9 @@ const socketUrl = import.meta.env.DEV
 
 export const socket = io(socketUrl, {
   autoConnect: false,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 10000,
 });

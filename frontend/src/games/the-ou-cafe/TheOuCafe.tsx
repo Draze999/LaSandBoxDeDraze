@@ -180,7 +180,7 @@ export default function TheOuCafe({
                 </button>
               </div>
               <h3>Questions posées</h3>
-              {game.questions.map((q) => (
+              {[...game.questions].reverse().map((q) => (
               <div className="item" key={q.id}>
                 <b>{player(q.authorId)}</b>
 
@@ -215,7 +215,7 @@ export default function TheOuCafe({
                 </button>
               </div>
               <h3>Réponses proposées</h3>
-              {game.answers.map((a) => (
+              {[...game.answers].reverse().map((a) => (
                 <div className={`item ${a.status}`} key={a.id}>
                   <b>{player(a.authorId)}</b>
                   <span>{a.text}</span>
@@ -234,7 +234,7 @@ export default function TheOuCafe({
           <div className="game1-columns">
             <div className="game1-panel">
               <h2>Questions des joueurs</h2>
-              {game.questions.map((q) => (
+              {[...game.questions].reverse().map((q) => (
                 <div className="judge-question" key={q.id}>
                   <b>{player(q.authorId)}</b>
                   <p>
@@ -291,7 +291,7 @@ export default function TheOuCafe({
             </div>
             <div className="game1-panel">
               <h2>Réponses des joueurs</h2>
-              {game.answers.map((a) => (
+              {[...game.answers].reverse().map((a) => (
                 <div className={`judge-answer ${a.status}`} key={a.id}>
                   <b>{player(a.authorId)}</b>
                   <span>{a.text}</span>

@@ -22,7 +22,7 @@ function TierlistView({ snapshot, board, editable, onDrop }: { snapshot: Tierlis
   const drag = (e: React.DragEvent, id: number) => { if (!editable) return; e.dataTransfer.setData("text/plain", String(id)); e.dataTransfer.effectAllowed = "move"; };
   const drop = (e: React.DragEvent, tier: Tier | null) => { if (!editable) return; e.preventDefault(); const id = Number(e.dataTransfer.getData("text/plain")); if (Number.isFinite(id)) onDrop?.(id, tier); };
   const allow = (e: React.DragEvent) => { if (editable) e.preventDefault(); };
-  const card = (id: number) => { const item = itemMap.get(id); if (!item) return null; return <div key={id} className="tier-item" draggable={editable} onDragStart={(e) => drag(e, id)} title={editable ? "Glisse-moi dans un rang" : item.name}><img src={item.imageUrl ?? ""} alt="" /><span>{item.name}</span></div>; };
+  const card = (id: number) => { const item = itemMap.get(id); if (!item) return null; return <div key={id} className="tier-item" draggable={editable} onDragStart={(e) => drag(e, id)} title={editable ? "Glisse-moi dans un rang" : item.name}><img src={item.imageUrl ?? ""} alt={item.name} title={item.name} /><span>{item.name}</span></div>; };
   return <div className="tierlist-board">
     <div className="tier-rows">
       {TIERS.map(t => <div key={t.id} className={`tier-row tier-${t.id}`} onDragOver={allow} onDrop={(e) => drop(e, t.id)}>

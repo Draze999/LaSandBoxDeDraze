@@ -7,7 +7,11 @@ import {
   addPlayer,
   createRoom,
   getRoom,
-  removePlayerBySocket,
+  disconnectPlayerBySocket,
+  hasConnectedPlayers,
+  reconnectPlayer,
+  removePlayerById,
+  removeRoom,
   serializeRoom,
 } from "./rooms.js";
 import type { GameId } from "./types.js";
@@ -25,6 +29,8 @@ import { RorschachEngine } from "./games/rorschach/engine.js";
 const app = Fastify({ logger: true });
 const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
+const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
+const emptyRoomTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 await app.register(cors, {
   origin: CLIENT_ORIGIN,
@@ -37,6 +43,8 @@ const io = new SocketIOServer(app.server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+  pingInterval: 10_000,
+  pingTimeout: 30_000,
 });
 
 const pseudo = z.string().trim().min(1).max(20);
@@ -140,6 +148,42 @@ app.get("/api/rooms/:code", async (req, reply) => {
   return { room: serializeRoom(room) };
 });
 
+function clearGame(roomCode: string) {
+  petitBac.clear(roomCode);
+  theOuCafe.clear(roomCode);
+  fauxFan.clear(roomCode);
+  tierlist.clear(roomCode);
+  rorschach.clear(roomCode);
+}
+
+function isGameStarted(roomCode: string, gameId: GameId) {
+  if (gameId === "game-1") return !!theOuCafe.get(roomCode);
+  if (gameId === "game-2") return !!fauxFan.get(roomCode);
+  if (gameId === "game-3") return !!petitBac.get(roomCode);
+  if (gameId === "game-4") return !!tierlist.get(roomCode);
+  return !!rorschach.get(roomCode);
+}
+
+function scheduleEmptyRoomCleanup(roomCode: string) {
+  const previous = emptyRoomTimers.get(roomCode);
+  if (previous) clearTimeout(previous);
+  const timer = setTimeout(() => {
+    emptyRoomTimers.delete(roomCode);
+    const room = getRoom(roomCode);
+    if (room && !hasConnectedPlayers(room)) {
+      removeRoom(roomCode);
+      clearGame(roomCode);
+    }
+  }, EMPTY_ROOM_GRACE_MS);
+  emptyRoomTimers.set(roomCode, timer);
+}
+
+function cancelEmptyRoomCleanup(roomCode: string) {
+  const timer = emptyRoomTimers.get(roomCode);
+  if (timer) clearTimeout(timer);
+  emptyRoomTimers.delete(roomCode);
+}
+
 io.on("connection", (socket) => {
   socket.on("room:create", (payload, cb) => {
     const parsed = createSchema.safeParse(payload);
@@ -163,6 +207,7 @@ io.on("connection", (socket) => {
     cb?.({
       ok: true,
       playerId: id,
+      reconnectToken: room.players.get(id)!.reconnectToken,
       room: serializeRoom(room),
     });
 
@@ -198,10 +243,65 @@ io.on("connection", (socket) => {
     cb?.({
       ok: true,
       playerId: id,
+      reconnectToken: room.players.get(id)!.reconnectToken,
       room: serializeRoom(room),
     });
 
     io.to(room.code).emit("room:updated", serializeRoom(room));
+  });
+
+  socket.on("room:reconnect", (payload, cb) => {
+    const parsed = z.object({
+      roomCode: code,
+      playerId: z.string().uuid(),
+      reconnectToken: z.string().uuid(),
+    }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+
+    const room = getRoom(parsed.data.roomCode);
+    if (!room) return cb?.({ ok: false, error: "ROOM_NOT_FOUND" });
+
+    const player = reconnectPlayer(room, parsed.data.playerId, parsed.data.reconnectToken, socket.id);
+    if (!player) return cb?.({ ok: false, error: "RECONNECT_FAILED" });
+
+    cancelEmptyRoomCleanup(room.code);
+    socket.join(room.code);
+    socket.data.playerId = player.id;
+    socket.data.roomCode = room.code;
+
+    cb?.({
+      ok: true,
+      playerId: player.id,
+      room: serializeRoom(room),
+      started: isGameStarted(room.code, room.gameId),
+    });
+    io.to(room.code).emit("room:updated", serializeRoom(room));
+  });
+
+  socket.on("room:leave", (cb) => {
+    const roomCode = socket.data.roomCode as string | undefined;
+    const playerId = socket.data.playerId as string | undefined;
+    if (!roomCode || !playerId) return cb?.({ ok: true });
+
+    const result = removePlayerById(roomCode, playerId);
+    socket.leave(roomCode);
+    socket.data.roomCode = undefined;
+    socket.data.playerId = undefined;
+
+    if (!result) return cb?.({ ok: true });
+    theOuCafe.removePlayer(roomCode, playerId);
+    fauxFan.removePlayer(roomCode, playerId);
+    tierlist.removePlayer(roomCode, playerId);
+    petitBac.removePlayer(roomCode, playerId);
+    rorschach.removePlayer(roomCode, playerId);
+
+    if (result.room.players.size > 0) {
+      io.to(roomCode).emit("room:updated", serializeRoom(result.room));
+    } else {
+      removeRoom(roomCode);
+      clearGame(roomCode);
+    }
+    cb?.({ ok: true });
   });
 
   socket.on("room:update-settings", (payload, cb) => {
@@ -567,25 +667,17 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     const roomCode = socket.data.roomCode as string | undefined;
     const playerId = socket.data.playerId as string | undefined;
+    if (!roomCode || !playerId) return;
 
-    const result = removePlayerBySocket(socket.id);
+    const result = disconnectPlayerBySocket(socket.id);
+    if (!result) return;
 
-    if (roomCode && playerId) {
-      petitBac.removePlayer(roomCode, playerId);
-      theOuCafe.removePlayer(roomCode, playerId);
-      fauxFan.removePlayer(roomCode, playerId);
-      tierlist.removePlayer(roomCode, playerId);
-      rorschach.removePlayer(roomCode, playerId);
-    }
-
-    if (result && result.room.players.size > 0) {
+    // A network loss or page refresh is temporary: keep the player and all game
+    // state so the same player can reconnect without losing their score.
+    if (hasConnectedPlayers(result.room)) {
       io.to(result.room.code).emit("room:updated", serializeRoom(result.room));
-    } else if (roomCode) {
-      petitBac.clear(roomCode);
-      theOuCafe.clear(roomCode);
-      fauxFan.clear(roomCode);
-      tierlist.clear(roomCode);
-      rorschach.clear(roomCode);
+    } else {
+      scheduleEmptyRoomCleanup(result.room.code);
     }
   });
 });

@@ -4,6 +4,8 @@ export type Player = {
   id: string;
   pseudo: string;
   socketId: string;
+  reconnectToken: string;
+  disconnectedAt?: number;
   isHost: boolean;
   joinedAt: number;
 };
