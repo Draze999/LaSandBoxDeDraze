@@ -25,6 +25,8 @@ import type { FauxFanCategory } from "./games/faux-fan/constants.js";
 import { THE_OU_CAFE_CATEGORY_IDS, type TheOuCafeCategory } from "./games/the-ou-cafe/constants.js";
 import type { TierlistCategory } from "./games/tierlists/constants.js";
 import { RorschachEngine } from "./games/rorschach/engine.js";
+import { ScrambledEggsEngine } from "./games/scrambled-eggs/engine.js";
+import type { ScrambledEggsCategory } from "./games/scrambled-eggs/constants.js";
 
 const app = Fastify({ logger: true });
 const PORT = Number(process.env.PORT ?? 3001);
@@ -48,14 +50,11 @@ const io = new SocketIOServer(app.server, {
 });
 
 const pseudo = z.string().trim().min(1).max(20);
-const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5"]);
+const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5", "game-6"]);
 const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{5}$/);
-const timeLimit = z
-  .number()
-  .int()
-  .min(20)
-  .max(240)
-  .refine((value) => value % 5 === 0);
+const timeLimit = z.number().int().min(20).max(240).refine((value) => value % 5 === 0);
+const tierlistTimeLimit = z.number().int().min(120).max(1200).refine((value) => value % 30 === 0);
+const scrambledEggsTimeLimit = z.number().int().min(30).max(301);
 
 const gameSettingsSchema = z.object({
   timeLimit: timeLimit.default(60),
@@ -63,6 +62,20 @@ const gameSettingsSchema = z.object({
   fauxFanCategory: z.enum(["anime", "character"]).default("anime"),
   tierlistCategory: z.enum(["anime", "character"]).default("anime"),
   tierlistItemCount: z.number().int().min(10).max(30).refine(v => v % 5 === 0).default(10),
+  tierlistTimeLimit: tierlistTimeLimit.default(300),
+  scrambledEggsCategory: z.enum(["anime", "character"]).default("anime"),
+  scrambledEggsTimeLimit: scrambledEggsTimeLimit.default(300),
+});
+
+const gameSettingsUpdateSchema = z.object({
+  timeLimit: timeLimit.optional(),
+  theOuCafeCategory: z.enum(["anime", "character"]).optional(),
+  fauxFanCategory: z.enum(["anime", "character"]).optional(),
+  tierlistCategory: z.enum(["anime", "character"]).optional(),
+  tierlistItemCount: z.number().int().min(10).max(30).refine(v => v % 5 === 0).optional(),
+  tierlistTimeLimit: tierlistTimeLimit.optional(),
+  scrambledEggsCategory: z.enum(["anime", "character"]).optional(),
+  scrambledEggsTimeLimit: scrambledEggsTimeLimit.optional(),
 });
 
 const createSchema = z.object({
@@ -77,7 +90,7 @@ const createSchema = z.object({
     name: "Ma partie",
     maxPlayers: 8,
     private: true,
-    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10 },
+    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300 },
   }),
 });
 
@@ -136,6 +149,17 @@ const petitBac = new PetitBacEngine({
   },
 });
 
+
+const scrambledEggs = new ScrambledEggsEngine((roomCode) => {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    if (!player.socketId) continue;
+    const snapshot = scrambledEggs.snapshot(roomCode, player.id);
+    if (snapshot) io.to(player.socketId).emit("game6:state", snapshot);
+  }
+});
+
 app.get("/health", async () => ({ ok: true, service: "roomhub-backend" }));
 
 app.get("/api/rooms/:code", async (req, reply) => {
@@ -154,6 +178,7 @@ function clearGame(roomCode: string) {
   fauxFan.clear(roomCode);
   tierlist.clear(roomCode);
   rorschach.clear(roomCode);
+  scrambledEggs.clear(roomCode);
 }
 
 function isGameStarted(roomCode: string, gameId: GameId) {
@@ -161,6 +186,14 @@ function isGameStarted(roomCode: string, gameId: GameId) {
   if (gameId === "game-2") return !!fauxFan.get(roomCode);
   if (gameId === "game-3") return !!petitBac.get(roomCode);
   if (gameId === "game-4") return !!tierlist.get(roomCode);
+  if (gameId === "game-6") {
+    const room = getRoom(roomCode);
+    if (!room) return false;
+    for (const player of room.players.values()) {
+      if (scrambledEggs.snapshot(roomCode, player.id)) return true;
+    }
+    return false;
+  }
 
   // RorschachEngine does not expose a `get()` method. Its public state
   // accessor is `snapshot(roomCode, playerId)`, so use the first player
@@ -305,6 +338,7 @@ io.on("connection", (socket) => {
     tierlist.removePlayer(roomCode, playerId);
     petitBac.removePlayer(roomCode, playerId);
     rorschach.removePlayer(roomCode, playerId);
+    scrambledEggs.removePlayer(roomCode, playerId);
 
     if (result.room.players.size > 0) {
       io.to(roomCode).emit("room:updated", serializeRoom(result.room));
@@ -327,7 +361,7 @@ io.on("connection", (socket) => {
       name: z.string().trim().min(1).max(40).optional(),
       maxPlayers: z.number().int().min(2).max(12).optional(),
       private: z.boolean().optional(),
-      gameSettings: gameSettingsSchema.partial().optional(),
+      gameSettings: gameSettingsUpdateSchema.optional(),
     });
 
     const parsed = schema.safeParse(payload);
@@ -394,7 +428,8 @@ io.on("connection", (socket) => {
     if (room.gameId === "game-4") {
       const category = room.settings.gameSettings?.tierlistCategory ?? "anime";
       const count = room.settings.gameSettings?.tierlistItemCount ?? 10;
-      const result = await tierlist.start(room.code, [...room.players.keys()], category as TierlistCategory, count);
+      const duration = room.settings.gameSettings?.tierlistTimeLimit ?? 300;
+      const result = await tierlist.start(room.code, [...room.players.keys()], category as TierlistCategory, count, duration);
       if (!result.ok) return cb?.(result);
       for (const player of room.players.values()) {
         const snapshot = tierlist.snapshot(room.code, player.id);
@@ -409,6 +444,19 @@ io.on("connection", (socket) => {
       for (const player of room.players.values()) {
         const snapshot = rorschach.snapshot(room.code, player.id);
         if (snapshot && player.socketId) io.to(player.socketId).emit("game5:start", snapshot);
+      }
+      return cb?.({ ok: true });
+    }
+
+    if (room.gameId === "game-6") {
+      const category = room.settings.gameSettings?.scrambledEggsCategory ?? "anime";
+      const rawTime = room.settings.gameSettings?.scrambledEggsTimeLimit ?? 300;
+      const selectedTime = rawTime >= 30 && rawTime <= 300 ? rawTime : 301;
+      const result = await scrambledEggs.start(room.code, [...room.players.keys()], category as ScrambledEggsCategory, selectedTime);
+      if (!result.ok) return cb?.(result);
+      for (const player of room.players.values()) {
+        const snapshot = scrambledEggs.snapshot(room.code, player.id);
+        if (snapshot && player.socketId) io.to(player.socketId).emit("game6:start", snapshot);
       }
       return cb?.({ ok: true });
     }
@@ -673,6 +721,18 @@ io.on("connection", (socket) => {
     );
 
     cb?.(result);
+  });
+
+  socket.on("game6:request-state", (cb) => {
+    const snapshot = scrambledEggs.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
+    if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
+    cb?.({ ok: true, snapshot });
+  });
+
+  socket.on("game6:guess", (payload, cb) => {
+    const parsed = z.object({ text: z.string().max(120) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(scrambledEggs.guess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.text));
   });
 
   socket.on("disconnect", () => {

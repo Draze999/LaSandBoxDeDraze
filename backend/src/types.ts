@@ -1,4 +1,4 @@
-export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5";
+export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5" | "game-6";
 
 export type Player = {
   id: string;
@@ -20,6 +20,9 @@ export type RoomSettings = {
     fauxFanCategory?: "anime" | "character";
     tierlistCategory?: "anime" | "character";
     tierlistItemCount?: number;
+    tierlistTimeLimit?: number;
+    scrambledEggsCategory?: "anime" | "character";
+    scrambledEggsTimeLimit?: number;
   };
 };
 

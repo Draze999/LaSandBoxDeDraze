@@ -5,6 +5,7 @@ import TheOuCafe from "./games/the-ou-cafe/TheOuCafe";
 import FauxFan from "./games/faux-fan/FauxFan";
 import Tierlists from "./games/tierlists/Tierlists";
 import Rorschach from "./games/rorschach/Rorschach";
+import ScrambledEggs from "./games/scrambled-eggs/ScrambledEggs";
 
 type Game = {
   id: string;
@@ -18,7 +19,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number } };
   players: Player[];
 };
 
@@ -60,6 +61,13 @@ const games: Game[] = [
     description: "Qui sera le plus créatif ?",
     color: "#7b5bb5",
     icon: "✏️",
+  },
+  {
+    id: "game-6",
+    name: "Scrambled Eggs",
+    description: "Remets les lettres dans le bon ordre.",
+    color: "#ecc162",
+    icon: "🍳",
   },
 ];
 
@@ -147,6 +155,7 @@ export default function App() {
     const startGame2 = () => setStarted(true);
     const startGame4 = () => setStarted(true);
     const startGame5 = () => setStarted(true);
+    const startGame6 = () => setStarted(true);
 
     const restore = () => {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -182,6 +191,7 @@ export default function App() {
     socket.on("game2:start", startGame2);
     socket.on("game4:start", startGame4);
     socket.on("game5:start", startGame5);
+    socket.on("game6:start", startGame6);
 
     if (socket.connected) restore();
     else if (localStorage.getItem(SESSION_KEY)) socket.connect();
@@ -195,6 +205,7 @@ export default function App() {
       socket.off("game2:start", startGame2);
       socket.off("game4:start", startGame4);
       socket.off("game5:start", startGame5);
+      socket.off("game6:start", startGame6);
     };
   }, []);
   const connect = () => {
@@ -210,7 +221,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10 } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300 } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -340,6 +351,22 @@ export default function App() {
             <span className="status"><i /> Partie en cours</span>
           </header>
           <Rorschach room={room} playerId={playerId} onExit={() => setStarted(false)} />
+        </main>
+      </div>
+    );
+
+  if (room && room.gameId === "game-6" && started)
+    return (
+      <div className="app">
+        <Background />
+        <main className="room-page">
+          <header className="topbar">
+            <button className="brand" onClick={() => setStarted(false)}>
+              <span className="brand-mark">A</span> L'Atelier de Draze
+            </button>
+            <span className="status"><i /> Partie en cours</span>
+          </header>
+          <ScrambledEggs room={room} playerId={playerId} onExit={() => setStarted(false)} />
         </main>
       </div>
     );
@@ -500,6 +527,41 @@ export default function App() {
                         style={{ width: "100%" }}
                       />
                     </label>
+                    <label>
+                      Durée : <strong>{room.settings.gameSettings?.tierlistTimeLimit ?? 300}s</strong>
+                      <input
+                        type="range" min={120} max={1200} step={30}
+                        value={room.settings.gameSettings?.tierlistTimeLimit ?? 300}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { tierlistTimeLimit: Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
+                  </>
+                )}
+                {room.gameId === "game-6" && (
+                  <>
+                    <label>
+                      Type de contenu
+                      <select
+                        value={room.settings.gameSettings?.scrambledEggsCategory ?? "anime"}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { scrambledEggsCategory: e.target.value } })}
+                      >
+                        <option value="anime">Animé</option>
+                        <option value="character">Personnage</option>
+                      </select>
+                    </label>
+                    <label>
+                      Temps limite : <strong>{(room.settings.gameSettings?.scrambledEggsTimeLimit ?? 300) > 300 ? "Aucune limite" : `${room.settings.gameSettings?.scrambledEggsTimeLimit ?? 300}s`}</strong>
+                      <input
+                        type="range" min={30} max={330} step={30}
+                        value={(room.settings.gameSettings?.scrambledEggsTimeLimit ?? 300) > 300 ? 330 : (room.settings.gameSettings?.scrambledEggsTimeLimit ?? 300)}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { scrambledEggsTimeLimit: Number(e.target.value) > 300 ? 301 : Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
                   </>
                 )}
                 {room.gameId === "game-3" && (
@@ -588,7 +650,7 @@ export default function App() {
             </label>
             <div className="label-line">
               <span>Choisis un jeu</span>
-              <span className="optional">5 disponibles</span>
+              <span className="optional">6 disponibles</span>
             </div>
             <div className="games">
               {games.map((g) => (

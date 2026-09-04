@@ -15,7 +15,7 @@ export class TierlistEngine {
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   constructor(private readonly onState: Callback) {}
 
-  async start(roomCode: string, playerIds: string[], category: TierlistCategory, count: number) {
+  async start(roomCode: string, playerIds: string[], category: TierlistCategory, count: number, durationSeconds = 300) {
     if (playerIds.length < 2) return { ok:false as const, error:"NOT_ENOUGH_PLAYERS" };
     const validCount = TIERLIST_ITEM_COUNTS.includes(count as TierlistItemCount) ? count as TierlistItemCount : 10;
     const animeRows = (await getAllAnime()) as AnimeRow[];
@@ -31,9 +31,9 @@ export class TierlistEngine {
     const themes = Object.fromEntries(playerIds.map((id,i)=>[id,themeList[i % themeList.length]]));
     const boards: Record<string,TierlistBoard> = Object.fromEntries(playerIds.map(id=>[id,{playerId:id,placements:Object.fromEntries(selected.map(x=>[String(x.id),null])),validated:false}]));
     const old=this.states.get(roomCode); if(this.timers.has(roomCode)) clearTimeout(this.timers.get(roomCode)!);
-    const state:TierlistState={category,items:selected,themes,boards,phase:"sorting",currentPlayerIndex:0,turnOrder:[...playerIds],guesses:[],roundScores:Object.fromEntries(playerIds.map(id=>[id,0])),cumulativeScores:cumulative,roundNumber:(old?.roundNumber??0)+1,endsAt:Date.now()+300000,result:null};
+    const state:TierlistState={category,items:selected,themes,boards,phase:"sorting",currentPlayerIndex:0,turnOrder:[...playerIds],guesses:[],roundScores:Object.fromEntries(playerIds.map(id=>[id,0])),cumulativeScores:cumulative,roundNumber:(old?.roundNumber??0)+1,endsAt:Date.now()+durationSeconds*1000,result:null};
     this.states.set(roomCode,state); this.cumulative.set(roomCode,cumulative); this.onState(roomCode);
-    this.timers.set(roomCode,setTimeout(()=>this.finishSorting(roomCode),300000));
+    this.timers.set(roomCode,setTimeout(()=>this.finishSorting(roomCode),durationSeconds*1000));
     return {ok:true as const};
   }
   get(code:string){return this.states.get(code);}
