@@ -161,7 +161,17 @@ function isGameStarted(roomCode: string, gameId: GameId) {
   if (gameId === "game-2") return !!fauxFan.get(roomCode);
   if (gameId === "game-3") return !!petitBac.get(roomCode);
   if (gameId === "game-4") return !!tierlist.get(roomCode);
-  return !!rorschach.get(roomCode);
+
+  // RorschachEngine does not expose a `get()` method. Its public state
+  // accessor is `snapshot(roomCode, playerId)`, so use the first player
+  // for whom a game snapshot exists to determine whether the game started.
+  const room = getRoom(roomCode);
+  if (!room) return false;
+
+  for (const player of room.players.values()) {
+    if (rorschach.snapshot(roomCode, player.id)) return true;
+  }
+  return false;
 }
 
 function scheduleEmptyRoomCleanup(roomCode: string) {
