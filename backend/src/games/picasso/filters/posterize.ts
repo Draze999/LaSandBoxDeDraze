@@ -1,2 +1,2 @@
 import type { PicassoFilter } from "./types.js";
-export const filter: PicassoFilter = { id:"posterize", name:"Couleurs découpées", apply: async image => image.sharpen(3).linear(1.7,-90).modulate({saturation:2.4}) };
+export const filter: PicassoFilter = { id:"posterize", name:"Couleurs découpées", apply: async image => image.sharpen({ sigma: 3 }).linear(1.7,-90).modulate({saturation:2.4}) };

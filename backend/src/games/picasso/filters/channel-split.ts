@@ -8,6 +8,6 @@ export const filter: PicassoFilter = {
       [1.15, -0.18, 0],
       [0, 1.1, -0.2],
       [-0.15, 0, 1.2],
-    ]).sharpen(2).modulate({ saturation: 2.4 });
+    ]).sharpen({ sigma: 2 }).modulate({ saturation: 2.4 });
   },
 };
