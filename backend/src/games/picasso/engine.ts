@@ -34,13 +34,27 @@ export class PicassoEngine {
 
     const originalImage = await fetchImage(String(row.image_url));
     const selected = chooseFilters(3);
+
+    console.log(
+      `[PICASSO][${roomCode}] Filtres sélectionnés : ${selected.map((filter) => `${filter.id} (${filter.name})`).join(" | ")}`
+    );
+
     let image = sharp(originalImage).rotate().resize(720, 720, { fit: "inside", withoutEnlargement: true });
 
     for (const filter of selected) {
-      image = await filter.apply(image);
+      console.log(`[PICASSO][${roomCode}] Application du filtre : ${filter.id} (${filter.name})`);
+      try {
+        image = await filter.apply(image);
+        console.log(`[PICASSO][${roomCode}] Filtre OK : ${filter.id} (${filter.name})`);
+      } catch (error) {
+        console.error(`[PICASSO][${roomCode}] ERREUR filtre : ${filter.id} (${filter.name})`, error);
+        throw error;
+      }
     }
 
+    console.log(`[PICASSO][${roomCode}] Génération de l'image finale...`);
     const output = await image.webp({ quality: 68 }).toBuffer();
+    console.log(`[PICASSO][${roomCode}] Image finale générée avec succès.`);
     const seconds = timeLimit >= 30 && timeLimit <= 300 ? timeLimit : 301;
     const endsAt = seconds > 300 ? null : Date.now() + seconds * 1000;
 
