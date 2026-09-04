@@ -245,6 +245,7 @@ io.on("connection", (socket) => {
       playerId: id,
       reconnectToken: room.players.get(id)!.reconnectToken,
       room: serializeRoom(room),
+      started: isGameStarted(room.code, room.gameId),
     });
 
     io.to(room.code).emit("room:updated", serializeRoom(room));

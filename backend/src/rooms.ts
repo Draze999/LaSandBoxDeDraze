@@ -80,7 +80,8 @@ export function removePlayerById(roomCode: string, playerId: string) {
   room.players.delete(playerId);
 
   if (room.hostId === playerId && room.players.size > 0) {
-    const next = room.players.values().next().value as Player;
+    // Prefer a currently connected player when transferring the host role.
+    const next = [...room.players.values()].find((p) => p.socketId) ?? room.players.values().next().value as Player;
     room.hostId = next.id;
     next.isHost = true;
   }

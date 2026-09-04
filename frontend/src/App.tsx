@@ -160,7 +160,9 @@ export default function App() {
       }
       socket.emit("room:reconnect", saved, (r: any) => {
         if (!r?.ok) {
-          localStorage.removeItem(SESSION_KEY);
+          // Keep the saved session for a manual recovery attempt from the room-code form.
+          // Only discard it when the room itself no longer exists.
+          if (r?.error === "ROOM_NOT_FOUND") localStorage.removeItem(SESSION_KEY);
           setRoom(null);
           setStarted(false);
           return;
@@ -220,24 +222,59 @@ export default function App() {
   };
   const join = (e: FormEvent) => {
     e.preventDefault();
-    if (!joinPseudo.trim()) return setError("Choisis un pseudo.");
-    if (code.length !== 5)
+    const normalizedCode = code.trim().toUpperCase();
+    if (normalizedCode.length !== 5)
       return setError("Le code doit contenir 5 caractères.");
     setError("");
     connect();
-    socket.emit("room:join", { pseudo: joinPseudo, code }, (r: any) => {
-      if (!r?.ok)
-        return setError(
-          r?.error === "ROOM_NOT_FOUND"
-            ? "Room introuvable."
-            : r?.error === "ROOM_FULL"
-              ? "Room pleine."
-              : "Impossible de rejoindre.",
-        );
-      setPlayerId(r.playerId);
-      setRoom(r.room);
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode: r.room.code, playerId: r.playerId, reconnectToken: r.reconnectToken } satisfies StoredSession));
-    });
+
+    // If this browser already owns a session for this room, the room code
+    // becomes a manual recovery path after an F5 / temporary disconnect.
+    const raw = localStorage.getItem(SESSION_KEY);
+    let saved: StoredSession | null = null;
+    try {
+      if (raw) saved = JSON.parse(raw) as StoredSession;
+    } catch {
+      localStorage.removeItem(SESSION_KEY);
+    }
+
+    const recover = () => {
+      if (!saved || saved.roomCode !== normalizedCode) return false;
+      socket.emit("room:reconnect", saved, (r: any) => {
+        if (!r?.ok) {
+          if (r?.error === "ROOM_NOT_FOUND") localStorage.removeItem(SESSION_KEY);
+          return setError(
+            r?.error === "ROOM_NOT_FOUND"
+              ? "Room introuvable."
+              : "Impossible de récupérer ta session dans cette room."
+          );
+        }
+        setPlayerId(r.playerId);
+        setRoom(r.room);
+        setStarted(Boolean(r.started));
+      });
+      return true;
+    };
+
+    const joinAsNewPlayer = () => {
+      if (!joinPseudo.trim()) return setError("Choisis un pseudo.");
+      socket.emit("room:join", { pseudo: joinPseudo, code: normalizedCode }, (r: any) => {
+        if (!r?.ok)
+          return setError(
+            r?.error === "ROOM_NOT_FOUND"
+              ? "Room introuvable."
+              : r?.error === "ROOM_FULL"
+                ? "Room pleine."
+                : "Impossible de rejoindre.",
+          );
+        setPlayerId(r.playerId);
+        setRoom(r.room);
+        setStarted(Boolean(r.started));
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode: r.room.code, playerId: r.playerId, reconnectToken: r.reconnectToken } satisfies StoredSession));
+      });
+    };
+
+    if (!recover()) joinAsNewPlayer();
   };
   const update = (patch: any) =>
     socket.emit("room:update-settings", patch, (r: any) => {
