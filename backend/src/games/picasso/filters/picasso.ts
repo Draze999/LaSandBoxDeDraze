@@ -1,2 +1,14 @@
-import sharp from "sharp"; import type { PicassoFilter } from "./types.js";
-export const filter: PicassoFilter = { id:"picasso", name:"Picasso", apply: async image => { const m=await image.metadata(); const w=m.width??800,h=m.height??800; const a=Math.random()*.35-.175,b=Math.random()*.3-.15; return image.affine([[1,a],[b,1]],{background:"#100018"}).rotate(Math.random()*24-12).resize(w,h,{fit:"fill"}).modulate({saturation:2.2,hue:Math.random()*360}); } };
+import type { PicassoFilter } from "./types.js";
+import { mapPixels } from "./pixel-utils.js";
+
+export const filter: PicassoFilter = {
+  id: "picasso", name: "Picasso",
+  apply: image => mapPixels(image, (x, y, w, h) => {
+    const nx = x / w - 0.5;
+    const ny = y / h - 0.5;
+    const r = Math.sqrt(nx * nx + ny * ny);
+    const a = Math.atan2(ny, nx) + 0.65 * Math.sin(r * 11) + 0.18 * Math.sin(ny * 24);
+    const rr = r * (1 + 0.38 * Math.sin(a * 5 + r * 15));
+    return [(Math.cos(a) * rr + 0.5) * w, (Math.sin(a) * rr + 0.5) * h];
+  }).then(result => result.modulate({ saturation: 2.5, hue: Math.floor(Math.random() * 360), brightness: 1.05 })),
+};

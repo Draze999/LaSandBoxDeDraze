@@ -6,9 +6,6 @@ import { filter as pixel_mosaic } from "./pixel-mosaic.js";
 import { filter as blur_storm } from "./blur-storm.js";
 import { filter as edge_crush } from "./edge-crush.js";
 import { filter as color_shock } from "./color-shock.js";
-import { filter as glass_warp } from "./glass-warp.js";
-import { filter as shear } from "./shear.js";
-import { filter as rotate_chaos } from "./rotate-chaos.js";
 import { filter as flip_flop } from "./flip-flop.js";
 import { filter as comic } from "./comic.js";
 import { filter as sepia_inferno } from "./sepia-inferno.js";
@@ -20,4 +17,16 @@ import { filter as hexagons } from "./hexagons.js";
 import { filter as picasso } from "./picasso.js";
 import { filter as neon_ghost } from "./neon-ghost.js";
 
-export const PICASSO_FILTERS = [negative, acid_hue, psychedelic, posterize, pixel_mosaic, blur_storm, edge_crush, color_shock, glass_warp, shear, rotate_chaos, flip_flop, comic, sepia_inferno, channel_split, contrast_collapse, median_melt, vivid_invert, hexagons, picasso, neon_ghost];
+import { filter as whirl } from "./whirl.js";
+import { filter as toon } from "./toon.js";
+import { filter as color_lines } from "./color-lines.js";
+import { filter as scanlines } from "./scanlines.js";
+import { filter as kaleidoscope } from "./kaleidoscope.js";
+import { filter as wave } from "./wave.js";
+import { filter as liquid } from "./liquid.js";
+import { filter as blocks } from "./blocks.js";
+import { filter as chromatic } from "./chromatic.js";
+import { filter as ink } from "./ink.js";
+import { filter as low_poly } from "./low-poly.js";
+
+export const PICASSO_FILTERS = [negative, acid_hue, psychedelic, posterize, pixel_mosaic, blur_storm, edge_crush, color_shock, flip_flop, comic, sepia_inferno, channel_split, contrast_collapse, median_melt, vivid_invert, hexagons, picasso, neon_ghost, whirl, toon, color_lines, scanlines, kaleidoscope, wave, liquid, blocks, chromatic, ink, low_poly];

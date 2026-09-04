@@ -1,2 +1,13 @@
 import type { PicassoFilter } from "./types.js";
-export const filter: PicassoFilter = { id:"flip-flop", name:"Miroir fou", apply: async image => { let x=image; if(Math.random()<.5)x=x.flop(); if(Math.random()<.7)x=x.flip(); return x; } };
+import { mapPixels } from "./pixel-utils.js";
+
+export const filter: PicassoFilter = {
+  id: "flip-flop", name: "Miroir fou",
+  apply: image => mapPixels(image, (x, y, w, h) => {
+    const band = Math.floor((y / h) * 8);
+    const mirrorX = band % 2 === 0;
+    const sx = mirrorX ? w - 1 - x : x;
+    const sy = (band % 3 === 0) ? h - 1 - y : y;
+    return [sx, sy];
+  }),
+};

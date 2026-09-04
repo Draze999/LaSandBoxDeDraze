@@ -1,2 +1,13 @@
-import sharp from "sharp"; import type { PicassoFilter } from "./types.js";
-export const filter: PicassoFilter = { id:"neon-ghost", name:"Fantôme néon", apply: async image => { const m=await image.metadata(); const w=m.width??800,h=m.height??800; const ghost=await image.clone().modulate({hue:Math.random()*360,saturation:4,brightness:1.3}).blur(5).toBuffer(); return image.negate().composite([{input:ghost,blend:"screen",left:8,top:-8}]).modulate({saturation:2.5}); } };
+import type { PicassoFilter } from "./types.js";
+
+export const filter: PicassoFilter = {
+  id: "neon-ghost", name: "Fantôme néon",
+  apply: async image => {
+    const hue = Math.floor(Math.random() * 360);
+    const ghost = await image.clone().modulate({ hue, saturation: 3.5, brightness: 1.2 }).blur(7).toBuffer();
+    return image
+      .negate({ alpha: false })
+      .modulate({ saturation: 2.2, brightness: 1.05 })
+      .composite([{ input: ghost, blend: "screen", left: 10, top: -10 }]);
+  },
+};
