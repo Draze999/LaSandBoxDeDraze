@@ -167,7 +167,7 @@ export class PicassoEngine {
       phase: state.phase,
       roundNumber: state.roundNumber,
       totalRounds: state.totalRounds,
-      cumulativeScores: this.cumulative.get(code) ?? Object.fromEntries(state.playerIds.values().map((id: string) => [id, 0])),
+      cumulativeScores: this.cumulative.get(code) ?? Object.fromEntries(Array.from(state.playerIds).map((id: string) => [id, 0])),
       endsAt: state.endsAt,
       winnerId: state.winnerId,
       winnerScore: state.winnerScore,
