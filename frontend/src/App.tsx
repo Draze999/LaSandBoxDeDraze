@@ -21,7 +21,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number; scrambledEggsRounds?: number; picassoRounds?: number; aLaSuiteTimeLimit?: number } };
   players: Player[];
 };
 
