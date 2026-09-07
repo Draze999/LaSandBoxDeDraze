@@ -5,7 +5,7 @@ import "./ALaSuite.css";
 type Player={id:string;pseudo:string;isHost:boolean};
 type Room={code:string;hostId:string;players:Player[]};
 type Answer={id:string;authorId:string;text:string;acceptedVotes:number;rejectedVotes:number;finalized:boolean;accepted:boolean|null};
-type Snapshot={phase:"playing"|"judging"|"finished";endsAt:number|null;theme:string;ownAnswers:Answer[];visibleAnswers:Record<string,Answer[]>;currentJudgePlayerId:string|null;currentJudgeAnswerId:string|null;roundScores:Record<string,number>;result:Record<string,number>|null;playerId:string;myVotedAnswerIds:string[]};
+type Snapshot={phase:"playing"|"judging"|"finished";endsAt:number|null;theme:string;ownAnswers:Answer[];visibleAnswers:Record<string,Answer[]>;currentJudgePlayerId:string|null;currentJudgeAnswerId:string|null;roundScores:Record<string,number>;result:Record<string,number>|null;playerId:string;myVotedAnswerIds:string[];themes:Record<string,string>};
 type Props={room:Room;playerId:string;onExit:()=>void};
 
 export default function ALaSuite({room,playerId,onExit}:Props){
@@ -29,7 +29,7 @@ export default function ALaSuite({room,playerId,onExit}:Props){
    const already=answer?game.myVotedAnswerIds.includes(answer.id):false;
    return <main className="game8-page"><section className="game8-shell">
     <header><div><p className="eyebrow">À la suite · Validation</p><h1>Valide les réponses</h1><p className="game8-subtitle">Les autres joueurs décident si la réponse correspond bien au thème.</p></div><div className="game8-progress">{answer?`Réponse de ${owner}`:"Terminé"}</div></header>
-    {answer?<div className="game8-judge"><div className="game8-big-answer">{answer.text}</div><p>Thème de {owner} : <strong>{game.theme}</strong></p>
+    {answer?<div className="game8-judge"><div className="game8-big-answer">{answer.text}</div><p>Thème de {owner} : <strong>{game.themes[answer.authorId] ?? "Thème inconnu"}</strong></p>
       {answer.authorId===playerId?<p className="muted">Les autres joueurs valident cette réponse.</p>:already?<p className="muted">Ton vote est enregistré.</p>:<div className="game8-votes"><button onClick={()=>validate(answer.id,true)}>✓ Valider</button><button onClick={()=>validate(answer.id,false)}>✕ Refuser</button></div>}
       <p className="game8-vote-count">{answer.acceptedVotes} pour · {answer.rejectedVotes} contre</p></div>:<p>Préparation de la correction…</p>}
     <div className="game8-all-answers">{Object.entries(game.visibleAnswers).map(([id,answers])=><div key={id}><h3>{names.get(id)??"Joueur"} · {answers.filter(a=>a.accepted).length} validée(s)</h3>{answers.map(a=><span key={a.id} className={`mini-answer ${a.accepted===true?"yes":a.accepted===false?"no":""}`}>{a.text}</span>)}</div>)}</div>

@@ -49,10 +49,19 @@ export class ScrambledEggsEngine {
 
   async start(roomCode: string, playerIds: string[], category: ScrambledEggsCategory, timeLimit: number, totalRounds = 1) {
     if (playerIds.length < 2) return { ok: false as const, error: "NOT_ENOUGH_PLAYERS" };
-    return this.beginRound(roomCode, playerIds, category, timeLimit, Math.max(1, Math.min(10, totalRounds)));
+
+    // A new start from the lobby is a completely new game: reset the
+    // cumulative scores and explicitly start at round 1.
+    const normalizedRounds = Math.max(1, Math.min(10, totalRounds));
+    this.cumulative.delete(roomCode);
+    const oldTimer = this.timers.get(roomCode);
+    if (oldTimer) clearTimeout(oldTimer);
+    this.timers.delete(roomCode);
+
+    return this.beginRound(roomCode, playerIds, category, timeLimit, normalizedRounds, 1);
   }
 
-  private async beginRound(roomCode: string, playerIds: string[], category: ScrambledEggsCategory, timeLimit: number, totalRounds: number) {
+  private async beginRound(roomCode: string, playerIds: string[], category: ScrambledEggsCategory, timeLimit: number, totalRounds: number, roundNumber: number) {
     const row = category === "anime" ? await getRandomAnime() : await getRandomCharacter();
     if (!row?.name) return { ok: false as const, error: "NO_CONTENT" };
     const old = this.states.get(roomCode);
@@ -67,7 +76,7 @@ export class ScrambledEggsEngine {
       phase: "playing", endsAt, guesses: [],
       proposalCounts: Object.fromEntries(playerIds.map(id => [id, 0])),
       winnerId: null, winnerScore: 0,
-      roundNumber: (old?.roundNumber ?? 0) + 1,
+      roundNumber,
       totalRounds,
       timeLimit: seconds,
       cumulativeScores: this.cumulative.get(roomCode) ?? Object.fromEntries(playerIds.map(id => [id, 0])),
@@ -99,7 +108,7 @@ export class ScrambledEggsEngine {
     setTimeout(() => {
       const current = this.states.get(code);
       if (!current || current !== state || current.phase !== "between") return;
-      void this.beginRound(code, playerIds, state.category, state.timeLimit, state.totalRounds).catch(error => {
+      void this.beginRound(code, playerIds, state.category, state.timeLimit, state.totalRounds, state.roundNumber + 1).catch(error => {
         console.error(`[SCRAMBLED-EGGS][${code}] Erreur manche suivante`, error);
         this.clear(code);
       });

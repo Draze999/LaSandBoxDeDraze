@@ -31,6 +31,18 @@ export class PicassoEngine {
   async start(roomCode: string, playerIds: string[], category: PicassoCategory, timeLimit: number, totalRounds = 1) {
     if (playerIds.length < 2) return { ok: false as const, error: "NOT_ENOUGH_PLAYERS" };
 
+    // A call to start() always begins a brand-new game from round 1.
+    // The next rounds use beginRound(), which preserves cumulative scores.
+    const normalizedRounds = Math.max(1, Math.min(10, totalRounds));
+    this.cumulative.delete(roomCode);
+    const oldTimer = this.timers.get(roomCode);
+    if (oldTimer) clearTimeout(oldTimer);
+    this.timers.delete(roomCode);
+
+    return this.beginRound(roomCode, playerIds, category, timeLimit, normalizedRounds, 1);
+  }
+
+  private async beginRound(roomCode: string, playerIds: string[], category: PicassoCategory, timeLimit: number, totalRounds: number, roundNumber: number) {
     const row = category === "anime" ? await getRandomAnime() : await getRandomCharacter();
     if (!row?.name || !row?.image_url) return { ok: false as const, error: "NO_CONTENT" };
 
@@ -73,8 +85,8 @@ export class PicassoEngine {
       winnerScore: 0,
       abandonedIds: new Set(),
       playerIds: new Set(playerIds),
-      roundNumber: (this.states.get(roomCode)?.roundNumber ?? 0) + 1,
-      totalRounds: Math.max(1, Math.min(10, totalRounds)),
+      roundNumber,
+      totalRounds,
       timeLimit: seconds,
     });
 
@@ -111,7 +123,7 @@ export class PicassoEngine {
     setTimeout(() => {
       const current = this.states.get(code);
       if (!current || current !== state || current.phase !== "between") return;
-      void this.start(code, playerIds, state.category, state.timeLimit, state.totalRounds).catch(error => {
+      void this.beginRound(code, playerIds, state.category, state.timeLimit, state.totalRounds, state.roundNumber + 1).catch(error => {
         console.error(`[PICASSO][${code}] Erreur manche suivante`, error);
         this.clear(code);
       });
@@ -129,17 +141,29 @@ export class PicassoEngine {
     const guess = text.trim();
     if (!guess) return { ok: false as const, error: "EMPTY_GUESS" };
     if (normalize(guess) === normalize(state.original)) {
-      state.phase = "finished";
       state.winnerId = playerId;
       state.winnerScore = 1;
       const scores = this.cumulative.get(code) ?? Object.fromEntries([...state.playerIds].map((id: string) => [id, 0]));
       scores[playerId] = (scores[playerId] ?? 0) + 1;
       this.cumulative.set(code, scores);
+      state.phase = state.roundNumber >= state.totalRounds ? "finished" : "between";
+      state.endsAt = null;
       const timer = this.timers.get(code);
       if (timer) clearTimeout(timer);
       this.timers.delete(code);
       this.onState(code);
-      return { ok: true as const, correct: true, finished: true, score: 1 };
+      if (state.phase === "between") {
+        const playerIds = [...state.playerIds];
+        setTimeout(() => {
+          const current = this.states.get(code);
+          if (!current || current !== state || current.phase !== "between") return;
+          void this.beginRound(code, playerIds, state.category, state.timeLimit, state.totalRounds, state.roundNumber + 1).catch(error => {
+            console.error(`[PICASSO][${code}] Erreur manche suivante`, error);
+            this.clear(code);
+          });
+        }, 1800);
+      }
+      return { ok: true as const, correct: true, finished: state.phase === "finished", score: 1 };
     }
     this.onState(code);
     return { ok: true as const, correct: false, finished: false, score: 0 };
