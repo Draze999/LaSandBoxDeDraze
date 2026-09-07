@@ -1,0 +1,23 @@
+export const A_LA_SUITE_THEMES = [
+  "Des animés avec un héros qui possède des pouvoirs",
+  "Des animés dont le personnage principal est un lycéen",
+  "Des animés qui commencent par la lettre A",
+  "Des animés qui commencent par la lettre B",
+  "Des animés qui commencent par la lettre C",
+  "Des animés qui commencent par la lettre D",
+  "Des animés qui commencent par la lettre F",
+  "Des animés qui commencent par la lettre M",
+  "Des animés qui commencent par la lettre N",
+  "Des animés qui commencent par la lettre S",
+  "Des animés qui commencent par la lettre T",
+  "Des animés avec une équipe de protagonistes",
+  "Des animés avec un tournoi",
+  "Des animés avec des robots",
+  "Des animés avec des vampires",
+  "Des animés avec des démons",
+  "Des animés avec des voyages dans le temps",
+  "Des animés adaptés d'un manga",
+  "Des animés avec un personnage principal féminin",
+  "Des animés avec un héros qui utilise une épée",
+] as const;
+export type ALaSuiteTheme = typeof A_LA_SUITE_THEMES[number];

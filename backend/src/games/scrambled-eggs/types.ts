@@ -12,13 +12,16 @@ export type ScrambledEggsState = {
   original: string;
   scrambled: string;
   spaceCount: number;
-  phase: "playing" | "finished";
+  phase: "playing" | "between" | "finished";
   endsAt: number | null;
   guesses: ScrambledEggsGuess[];
   proposalCounts: Record<string, number>;
   winnerId: string | null;
   winnerScore: number;
   roundNumber: number;
+  totalRounds: number;
+  timeLimit: number;
+  cumulativeScores: Record<string, number>;
 };
 
 export type ScrambledEggsSnapshot = Omit<ScrambledEggsState, "original"> & {

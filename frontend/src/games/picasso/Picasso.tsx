@@ -8,12 +8,16 @@ type Snapshot = {
   category: "anime" | "character";
   imageDataUrl: string;
   original: string | null;
-  phase: "playing" | "finished";
+  phase: "playing" | "between" | "finished";
   endsAt: number | null;
   winnerId: string | null;
   winnerScore: number;
   abandonedIds: string[];
   playerId: string;
+  roundNumber: number;
+  totalRounds: number;
+  cumulativeScores: Record<string, number>;
+  timeLimit: number;
 };
 type Props = { room: Room; playerId: string; onExit: () => void };
 
@@ -72,7 +76,7 @@ export default function Picasso({ room, playerId, onExit }: Props) {
     <main className="game7-page">
       <section className="game7-shell">
         <header className="game7-header">
-          <div><p className="eyebrow">Picasso · {game.category === "anime" ? "Animé" : "Personnage"}</p><h1>Qui est-ce ?</h1><p className="game7-subtitle">L'image a subi trois transformations. Saurez-vous reconnaître l'original ?</p></div>
+          <div><p className="eyebrow">Picasso · {game.category === "anime" ? "Animé" : "Personnage"} · Manche {game.roundNumber}/{game.totalRounds}</p><h1>Qui est-ce ?</h1><p className="game7-subtitle">L'image a subi trois transformations. Saurez-vous reconnaître l'original ?</p></div>
           <div className={`game7-timer ${remaining !== null && remaining <= 10 ? "danger" : ""}`}>{remaining === null ? "∞" : `${remaining}s`}</div>
         </header>
 
@@ -86,9 +90,22 @@ export default function Picasso({ room, playerId, onExit }: Props) {
             <button className="primary purple" onClick={submit} disabled={abandoned}>{abandoned ? "Tu as abandonné" : "Répondre →"}</button>
             {!abandoned && <button className="game7-abandon" onClick={abandon}>J'abandonne</button>}
           </div>
+        ) : game.phase === "between" ? (
+          <div className="game7-result">
+            {winner ? <p>🏆 {winner.pseudo} a trouvé !</p> : <p>Personne n'a trouvé cette manche.</p>}
+            <strong>{game.original}</strong>
+            {winner && <span>+1 point</span>}
+            <p>Manche suivante dans un instant…</p>
+          </div>
         ) : (
           <div className="game7-result">
-            {winner ? <><p>🏆 {winner.pseudo} a trouvé !</p><strong>{game.original}</strong><span>+1 point</span></> : <><p>La réponse était :</p><strong>{game.original}</strong><span>Aucun point cette manche.</span></>}
+            {winner ? <p>🏆 {winner.pseudo} a trouvé la dernière manche !</p> : <p>La dernière manche est terminée.</p>}
+            <strong>{game.original}</strong>
+            <div className="game7-final-scores">
+              {Object.entries(game.cumulativeScores).sort(([,a],[,b]) => b-a).map(([id, score]) => (
+                <div key={id}><strong>{room.players.find(p => p.id === id)?.pseudo ?? "Joueur"}</strong><span>{score} point{score > 1 ? "s" : ""}</span></div>
+              ))}
+            </div>
             <button className="primary purple" onClick={onExit}>Retour à la room <span>←</span></button>
           </div>
         )}

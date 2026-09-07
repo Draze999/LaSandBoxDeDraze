@@ -10,13 +10,16 @@ type Snapshot = {
   original: string | null;
   scrambled: string;
   spaceCount: number;
-  phase: "playing" | "finished";
+  phase: "playing" | "between" | "finished";
   endsAt: number | null;
   guesses: Guess[];
   proposalCounts: Record<string, number>;
   winnerId: string | null;
   winnerScore: number;
   roundNumber: number;
+  totalRounds: number;
+  cumulativeScores: Record<string, number>;
+  timeLimit: number;
   canGuess: boolean;
   playerId: string;
 };
@@ -84,7 +87,7 @@ export default function ScrambledEggs({ room, playerId, onExit }: Props) {
       <section className="game6-shell">
         <header className="game6-header">
           <div>
-            <p className="eyebrow">Scrambled Eggs · {game.category === "anime" ? "Animé" : "Personnage"}</p>
+            <p className="eyebrow">Scrambled Eggs · {game.category === "anime" ? "Animé" : "Personnage"} · Manche {game.roundNumber}/{game.totalRounds}</p>
             <h1>Quel est le nom ?</h1>
             <p className="game6-subtitle">
               Toutes les lettres sont mélangées. Les espaces ont été retirés.
@@ -118,20 +121,22 @@ export default function ScrambledEggs({ room, playerId, onExit }: Props) {
               {game.canGuess ? "Proposer →" : "En attente des autres…"}
             </button>
           </div>
+        ) : game.phase === "between" ? (
+          <div className="game6-result">
+            {winner ? <p>🏆 {winner.pseudo} a trouvé !</p> : <p>Personne n'a trouvé à temps.</p>}
+            <strong>{game.original}</strong>
+            {winner && <span>+{game.winnerScore} point{game.winnerScore > 1 ? "s" : ""}</span>}
+            <p>Manche suivante dans un instant…</p>
+          </div>
         ) : (
           <div className="game6-result">
-            {winner ? (
-              <>
-                <p>🏆 {winner.pseudo} a trouvé !</p>
-                <strong>{game.original}</strong>
-                <span>+{game.winnerScore} point{game.winnerScore > 1 ? "s" : ""}</span>
-              </>
-            ) : (
-              <>
-                <p>Personne n'a trouvé à temps.</p>
-                <strong>{game.original}</strong>
-              </>
-            )}
+            {winner ? <p>🏆 {winner.pseudo} a trouvé la dernière manche !</p> : <p>La dernière manche est terminée.</p>}
+            <strong>{game.original}</strong>
+            <div className="game6-final-scores">
+              {Object.entries(game.cumulativeScores).sort(([,a],[,b]) => b-a).map(([id, score]) => (
+                <div key={id}><strong>{room.players.find(p => p.id === id)?.pseudo ?? "Joueur"}</strong><span>{score} point{score > 1 ? "s" : ""}</span></div>
+              ))}
+            </div>
             <button className="primary purple" onClick={onExit}>Retour à la room <span>←</span></button>
           </div>
         )}

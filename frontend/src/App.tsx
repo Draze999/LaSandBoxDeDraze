@@ -7,6 +7,7 @@ import Tierlists from "./games/tierlists/Tierlists";
 import Rorschach from "./games/rorschach/Rorschach";
 import ScrambledEggs from "./games/scrambled-eggs/ScrambledEggs";
 import Picasso from "./games/picasso/Picasso";
+import ALaSuite from "./games/a-la-suite/ALaSuite";
 
 type Game = {
   id: string;
@@ -69,6 +70,13 @@ const games: Game[] = [
     description: "Remets les lettres dans le bon ordre.",
     color: "#ecc162",
     icon: "🍳",
+  },
+  {
+    id: "game-8",
+    name: "À la suite",
+    description: "Trouve le plus d'animés possible.",
+    color: "#3c9c78",
+    icon: "🎬",
   },
   {
     id: "game-7",
@@ -165,6 +173,7 @@ export default function App() {
     const startGame5 = () => setStarted(true);
     const startGame6 = () => setStarted(true);
     const startGame7 = () => setStarted(true);
+    const startGame8 = () => setStarted(true);
 
     const restore = () => {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -202,6 +211,7 @@ export default function App() {
     socket.on("game5:start", startGame5);
     socket.on("game6:start", startGame6);
     socket.on("game7:start", startGame7);
+    socket.on("game8:start", startGame8);
 
     if (socket.connected) restore();
     else if (localStorage.getItem(SESSION_KEY)) socket.connect();
@@ -217,6 +227,7 @@ export default function App() {
       socket.off("game5:start", startGame5);
       socket.off("game6:start", startGame6);
       socket.off("game7:start", startGame7);
+      socket.off("game8:start", startGame8);
     };
   }, []);
   const connect = () => {
@@ -232,7 +243,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300 } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60 } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -396,6 +407,17 @@ export default function App() {
           <Picasso room={room} playerId={playerId} onExit={() => setStarted(false)} />
         </main>
       </div>
+    );
+
+  if (room && room.gameId === "game-8" && started)
+    return (
+      <div className="app"><Background /><main className="room-page">
+        <header className="topbar">
+          <button className="brand" onClick={() => setStarted(false)}><span className="brand-mark">A</span> L'Atelier de Draze</button>
+          <span className="status"><i /> Partie en cours</span>
+        </header>
+        <ALaSuite room={room} playerId={playerId} onExit={() => setStarted(false)} />
+      </main></div>
     );
 
   if (room && room.gameId === "game-3" && started)
@@ -589,6 +611,15 @@ export default function App() {
                         style={{ width: "100%" }}
                       />
                     </label>
+                    <label>
+                      Nombre de manches : <strong>{room.settings.gameSettings?.scrambledEggsRounds ?? 1}</strong>
+                      <input type="range" min={1} max={10} step={1}
+                        value={room.settings.gameSettings?.scrambledEggsRounds ?? 1}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { scrambledEggsRounds: Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
                   </>
                 )}
                 {room.gameId === "game-7" && (
@@ -614,7 +645,27 @@ export default function App() {
                         style={{ width: "100%" }}
                       />
                     </label>
+                    <label>
+                      Nombre de manches : <strong>{room.settings.gameSettings?.picassoRounds ?? 1}</strong>
+                      <input type="range" min={1} max={10} step={1}
+                        value={room.settings.gameSettings?.picassoRounds ?? 1}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { picassoRounds: Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
                   </>
+                )}
+                {room.gameId === "game-8" && (
+                  <label>
+                    Temps limite : <strong>{room.settings.gameSettings?.aLaSuiteTimeLimit ?? 60}s</strong>
+                    <input type="range" min={10} max={150} step={10}
+                      value={room.settings.gameSettings?.aLaSuiteTimeLimit ?? 60}
+                      disabled={room.hostId !== playerId}
+                      onChange={(e) => update({ gameSettings: { aLaSuiteTimeLimit: Number(e.target.value) } })}
+                      style={{ width: "100%" }}
+                    />
+                  </label>
                 )}
                 {room.gameId === "game-3" && (
                   <label>

@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { getAllAnime, getRandomCharacters } from "../../database/anime.js";
-import { TIERLIST_ITEM_COUNTS, TIERLIST_THEMES, type TierlistCategory, type TierlistItemCount, type TierlistTier } from "./constants.js";
+import { TIERLIST_ANIME_THEMES, TIERLIST_CHARACTER_THEMES, TIERLIST_ITEM_COUNTS, type TierlistCategory, type TierlistItemCount, type TierlistTier } from "./constants.js";
 import type { TierlistBoard, TierlistGuess, TierlistItem, TierlistSnapshot, TierlistState } from "./types.js";
 
 type AnimeRow = { id: number | string; name: string; image_url?: string | null };
@@ -27,7 +27,7 @@ export class TierlistEngine {
     const selected = shuffle(items).slice(0, validCount);
     const previous = this.cumulative.get(roomCode) ?? {};
     const cumulative = Object.fromEntries(playerIds.map(id=>[id, previous[id] ?? 0]));
-    const themeList = shuffle([...TIERLIST_THEMES]);
+    const themeList = shuffle([...(category === "anime" ? TIERLIST_ANIME_THEMES : TIERLIST_CHARACTER_THEMES)]);
     const themes = Object.fromEntries(playerIds.map((id,i)=>[id,themeList[i % themeList.length]]));
     const boards: Record<string,TierlistBoard> = Object.fromEntries(playerIds.map(id=>[id,{playerId:id,placements:Object.fromEntries(selected.map(x=>[String(x.id),null])),validated:false}]));
     const old=this.states.get(roomCode); if(this.timers.has(roomCode)) clearTimeout(this.timers.get(roomCode)!);

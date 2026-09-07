@@ -8,13 +8,15 @@ type State = {
   category: PicassoCategory;
   original: string;
   imageDataUrl: string;
-  phase: "playing" | "finished";
+  phase: "playing" | "between" | "finished";
   endsAt: number | null;
   winnerId: string | null;
   winnerScore: number;
   abandonedIds: Set<string>;
   playerIds: Set<string>;
   roundNumber: number;
+  totalRounds: number;
+  timeLimit: number;
 };
 
 type Callback = (roomCode: string) => void;
@@ -22,11 +24,11 @@ type Callback = (roomCode: string) => void;
 export class PicassoEngine {
   private states = new Map<string, State>();
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
-  private cumulative = new Map<string, number>();
+  private cumulative = new Map<string, Record<string, number>>();
 
   constructor(private readonly onState: Callback) {}
 
-  async start(roomCode: string, playerIds: string[], category: PicassoCategory, timeLimit: number) {
+  async start(roomCode: string, playerIds: string[], category: PicassoCategory, timeLimit: number, totalRounds = 1) {
     if (playerIds.length < 2) return { ok: false as const, error: "NOT_ENOUGH_PLAYERS" };
 
     const row = category === "anime" ? await getRandomAnime() : await getRandomCharacter();
@@ -72,6 +74,8 @@ export class PicassoEngine {
       abandonedIds: new Set(),
       playerIds: new Set(playerIds),
       roundNumber: (this.states.get(roomCode)?.roundNumber ?? 0) + 1,
+      totalRounds: Math.max(1, Math.min(10, totalRounds)),
+      timeLimit: seconds,
     });
 
     if (endsAt !== null) {
@@ -87,13 +91,31 @@ export class PicassoEngine {
 
   private finish(code: string) {
     const state = this.states.get(code);
-    if (!state || state.phase !== "playing") return;
+    if (!state || (state.phase !== "playing" && state.phase !== "between")) return;
     const timer = this.timers.get(code);
     if (timer) clearTimeout(timer);
     this.timers.delete(code);
-    state.phase = "finished";
+    if (state.phase === "between") return;
+
+    if (state.roundNumber >= state.totalRounds) {
+      state.phase = "finished";
+      state.endsAt = null;
+      this.onState(code);
+      return;
+    }
+
+    state.phase = "between";
     state.endsAt = null;
     this.onState(code);
+    const playerIds = [...state.playerIds];
+    setTimeout(() => {
+      const current = this.states.get(code);
+      if (!current || current !== state || current.phase !== "between") return;
+      void this.start(code, playerIds, state.category, state.timeLimit, state.totalRounds).catch(error => {
+        console.error(`[PICASSO][${code}] Erreur manche suivante`, error);
+        this.clear(code);
+      });
+    }, 1800);
   }
 
   guess(code: string, playerId: string, text: string) {
@@ -110,7 +132,9 @@ export class PicassoEngine {
       state.phase = "finished";
       state.winnerId = playerId;
       state.winnerScore = 1;
-      this.cumulative.set(code, (this.cumulative.get(code) ?? 0) + 1);
+      const scores = this.cumulative.get(code) ?? Object.fromEntries([...state.playerIds].map((id: string) => [id, 0]));
+      scores[playerId] = (scores[playerId] ?? 0) + 1;
+      this.cumulative.set(code, scores);
       const timer = this.timers.get(code);
       if (timer) clearTimeout(timer);
       this.timers.delete(code);
@@ -141,6 +165,9 @@ export class PicassoEngine {
       imageDataUrl: state.imageDataUrl,
       original: state.phase === "finished" ? state.original : null,
       phase: state.phase,
+      roundNumber: state.roundNumber,
+      totalRounds: state.totalRounds,
+      cumulativeScores: this.cumulative.get(code) ?? Object.fromEntries(playerIds.map((id: string) => [id, 0])),
       endsAt: state.endsAt,
       winnerId: state.winnerId,
       winnerScore: state.winnerScore,

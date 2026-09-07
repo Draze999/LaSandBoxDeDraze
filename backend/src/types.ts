@@ -1,4 +1,4 @@
-export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5" | "game-6" | "game-7";
+export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5" | "game-6" | "game-7" | "game-8";
 
 export type Player = {
   id: string;
@@ -25,6 +25,9 @@ export type RoomSettings = {
     scrambledEggsTimeLimit?: number;
     picassoCategory?: "anime" | "character";
     picassoTimeLimit?: number;
+    scrambledEggsRounds?: number;
+    picassoRounds?: number;
+    aLaSuiteTimeLimit?: number;
   };
 };
 
