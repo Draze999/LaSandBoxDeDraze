@@ -1,4 +1,4 @@
-export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5" | "game-6" | "game-7" | "game-8";
+export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5" | "game-6" | "game-7" | "game-8" | "game-9";
 
 export type Player = {
   id: string;
@@ -28,6 +28,7 @@ export type RoomSettings = {
     scrambledEggsRounds?: number;
     picassoRounds?: number;
     aLaSuiteTimeLimit?: number;
+    synopsisEclataxRounds?: number;
   };
 };
 

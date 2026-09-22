@@ -117,6 +117,7 @@ export async function getAllAnime() {
  *
  * @returns {object|null}
  */
+
 export async function getRandomAnime() {
   const { data, error } = await supabase.rpc("get_random_anime");
 
@@ -433,17 +434,18 @@ export async function searchCharacters(name: string) {
  * @param {string} name
  * @returns {Array}
  */
-export async function searchAnime(name: string) {
+export async function searchAnime(name: string, limit = 50) {
   const search = String(name ?? "").trim();
 
   if (!search) {
     return [];
   }
 
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+  const escaped = search.replace(/[\%_]/g, (char) => `\\${char}`);
+
   const { data, error } = await supabase
-
     .from("anime")
-
     .select(
       `
       id,
@@ -452,14 +454,9 @@ export async function searchAnime(name: string) {
       image_small_url
     `,
     )
-
-    .ilike("name", `%${search}%`)
-
-    .order("name", {
-      ascending: true,
-    })
-
-    .limit(50);
+    .ilike("name", `%${escaped}%`)
+    .order("name", { ascending: true })
+    .limit(safeLimit);
 
   if (error) {
     throw error;

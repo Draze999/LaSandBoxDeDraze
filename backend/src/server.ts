@@ -30,6 +30,8 @@ import type { ScrambledEggsCategory } from "./games/scrambled-eggs/constants.js"
 import { PicassoEngine } from "./games/picasso/engine.js";
 import type { PicassoCategory } from "./games/picasso/types.js";
 import { ALaSuiteEngine } from "./games/a-la-suite/engine.js";
+import { SynopsisEclataxEngine } from "./games/synopsis-eclatax/engine.js";
+import { searchAnime } from "./database/anime.js";
 
 const app = Fastify({ logger: true });
 const PORT = Number(process.env.PORT ?? 3001);
@@ -53,7 +55,7 @@ const io = new SocketIOServer(app.server, {
 });
 
 const pseudo = z.string().trim().min(1).max(20);
-const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5", "game-6", "game-7", "game-8"]);
+const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5", "game-6", "game-7", "game-8", "game-9"]);
 const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{5}$/);
 const timeLimit = z.number().int().min(20).max(240).refine((value) => value % 5 === 0);
 const tierlistTimeLimit = z.number().int().min(120).max(1200).refine((value) => value % 30 === 0);
@@ -73,6 +75,7 @@ const gameSettingsSchema = z.object({
   scrambledEggsRounds: z.number().int().min(1).max(10).default(1),
   picassoRounds: z.number().int().min(1).max(10).default(1),
   aLaSuiteTimeLimit: z.number().int().min(10).max(150).default(60),
+  synopsisEclataxRounds: z.number().int().min(1).max(10).default(1),
 });
 
 const gameSettingsUpdateSchema = z.object({
@@ -89,6 +92,7 @@ const gameSettingsUpdateSchema = z.object({
   scrambledEggsRounds: z.number().int().min(1).max(10).optional(),
   picassoRounds: z.number().int().min(1).max(10).optional(),
   aLaSuiteTimeLimit: z.number().int().min(10).max(150).optional(),
+  synopsisEclataxRounds: z.number().int().min(1).max(10).optional(),
 });
 
 const createSchema = z.object({
@@ -103,7 +107,7 @@ const createSchema = z.object({
     name: "Ma partie",
     maxPlayers: 8,
     private: true,
-    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60 },
+    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1 },
   }),
 });
 
@@ -193,7 +197,30 @@ const aLaSuite = new ALaSuiteEngine((roomCode) => {
   }
 });
 
+const synopsisEclatax = new SynopsisEclataxEngine((roomCode) => {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    if (!player.socketId) continue;
+    const snapshot = synopsisEclatax.snapshot(roomCode, player.id);
+    if (snapshot) io.to(player.socketId).emit("game9:state", snapshot);
+  }
+});
+
 app.get("/health", async () => ({ ok: true, service: "roomhub-backend" }));
+
+app.get("/api/anime/search", async (req, reply) => {
+  const parsed = z.object({ q: z.string().trim().min(1).max(80) }).safeParse(req.query);
+  if (!parsed.success) return reply.code(400).send({ error: "INVALID_QUERY" });
+
+  try {
+    const results = await searchAnime(parsed.data.q, 8);
+    return { results };
+  } catch (error) {
+    app.log.error(error);
+    return reply.code(500).send({ error: "SEARCH_FAILED" });
+  }
+});
 
 app.get("/api/rooms/:code", async (req, reply) => {
   const parsed = z.object({ code }).safeParse(req.params);
@@ -214,6 +241,7 @@ function clearGame(roomCode: string) {
   scrambledEggs.clear(roomCode);
   picasso.clear(roomCode);
   aLaSuite.clear(roomCode);
+  synopsisEclatax.clear(roomCode);
 }
 
 function isGameStarted(roomCode: string, gameId: GameId) {
@@ -232,6 +260,7 @@ function isGameStarted(roomCode: string, gameId: GameId) {
   }
 
   if (gameId === "game-8") return !!aLaSuite.get(roomCode);
+  if (gameId === "game-9") return !!synopsisEclatax.get(roomCode);
 
   // RorschachEngine does not expose a `get()` method. Its public state
   // accessor is `snapshot(roomCode, playerId)`, so use the first player
@@ -379,6 +408,7 @@ io.on("connection", (socket) => {
     scrambledEggs.removePlayer(roomCode, playerId);
     picasso.removePlayer(roomCode, playerId);
     aLaSuite.removePlayer(roomCode, playerId);
+    synopsisEclatax.removePlayer(roomCode, playerId);
 
     if (result.room.players.size > 0) {
       io.to(roomCode).emit("room:updated", serializeRoom(result.room));
@@ -521,6 +551,17 @@ io.on("connection", (socket) => {
       for (const player of room.players.values()) {
         const snapshot = aLaSuite.snapshot(room.code, player.id);
         if (snapshot && player.socketId) io.to(player.socketId).emit("game8:start", snapshot);
+      }
+      return cb?.({ ok: true });
+    }
+
+    if (room.gameId === "game-9") {
+      const rounds = room.settings.gameSettings?.synopsisEclataxRounds ?? 1;
+      const result = await synopsisEclatax.start(room.code, [...room.players.keys()], rounds);
+      if (!result.ok) return cb?.(result);
+      for (const player of room.players.values()) {
+        const snapshot = synopsisEclatax.snapshot(room.code, player.id);
+        if (snapshot && player.socketId) io.to(player.socketId).emit("game9:start", snapshot);
       }
       return cb?.({ ok: true });
     }
@@ -831,6 +872,18 @@ io.on("connection", (socket) => {
     const parsed = z.object({ answerId: z.string(), accepted: z.boolean() }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
     cb?.(aLaSuite.validate(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.answerId, parsed.data.accepted));
+  });
+
+  socket.on("game9:request-state", (cb) => {
+    const snapshot = synopsisEclatax.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
+    if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
+    cb?.({ ok: true, snapshot });
+  });
+
+  socket.on("game9:guess", (payload, cb) => {
+    const parsed = z.object({ text: z.string().max(160) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(synopsisEclatax.guess(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.text));
   });
 
   socket.on("disconnect", () => {

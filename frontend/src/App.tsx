@@ -8,6 +8,7 @@ import Rorschach from "./games/rorschach/Rorschach";
 import ScrambledEggs from "./games/scrambled-eggs/ScrambledEggs";
 import Picasso from "./games/picasso/Picasso";
 import ALaSuite from "./games/a-la-suite/ALaSuite";
+import SynopsisEclatax from "./games/synopsis-eclatax/SynopsisEclatax";
 
 type Game = {
   id: string;
@@ -21,7 +22,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number; scrambledEggsRounds?: number; picassoRounds?: number; aLaSuiteTimeLimit?: number } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number; scrambledEggsRounds?: number; picassoRounds?: number; aLaSuiteTimeLimit?: number; synopsisEclataxRounds?: number } };
   players: Player[];
 };
 
@@ -79,6 +80,13 @@ const games: Game[] = [
     icon: "🎬",
   },
   {
+    id: "game-9",
+    name: "Synospsis éclatax",
+    description: "Devine l'animé à partir d'un synopsis catastrophique.",
+    color: "#d06b58",
+    icon: "🤡",
+  },
+  {
     id: "game-7",
     name: "Picasso",
     description: "Reconnais l'image malgré le chaos.",
@@ -86,6 +94,16 @@ const games: Game[] = [
     icon: "🎨",
   },
 ];
+
+function startErrorMessage(error: string) {
+  const messages: Record<string, string> = {
+    OPENAI_NOT_CONFIGURED: "OPENAI_API_KEY n'est pas configurée sur le serveur.",
+    AI_GENERATION_FAILED: "Impossible de générer le synopsis avec l'IA.",
+    NO_CONTENT: "Aucun animé disponible dans la base de données.",
+    NOT_ENOUGH_PLAYERS: "Il faut au moins 2 joueurs.",
+  };
+  return messages[error] ?? "Impossible de lancer la partie.";
+}
 
 function Background() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -174,6 +192,7 @@ export default function App() {
     const startGame6 = () => setStarted(true);
     const startGame7 = () => setStarted(true);
     const startGame8 = () => setStarted(true);
+    const startGame9 = () => setStarted(true);
 
     const restore = () => {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -212,6 +231,7 @@ export default function App() {
     socket.on("game6:start", startGame6);
     socket.on("game7:start", startGame7);
     socket.on("game8:start", startGame8);
+    socket.on("game9:start", startGame9);
 
     if (socket.connected) restore();
     else if (localStorage.getItem(SESSION_KEY)) socket.connect();
@@ -228,6 +248,7 @@ export default function App() {
       socket.off("game6:start", startGame6);
       socket.off("game7:start", startGame7);
       socket.off("game8:start", startGame8);
+      socket.off("game9:start", startGame9);
     };
   }, []);
   const connect = () => {
@@ -243,7 +264,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60 } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1 } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -417,6 +438,17 @@ export default function App() {
           <span className="status"><i /> Partie en cours</span>
         </header>
         <ALaSuite room={room} playerId={playerId} onExit={() => setStarted(false)} />
+      </main></div>
+    );
+
+  if (room && room.gameId === "game-9" && started)
+    return (
+      <div className="app"><Background /><main className="room-page">
+        <header className="topbar">
+          <button className="brand" onClick={() => setStarted(false)}><span className="brand-mark">A</span> L'Atelier de Draze</button>
+          <span className="status"><i /> Partie en cours</span>
+        </header>
+        <SynopsisEclatax room={room} playerId={playerId} onExit={() => setStarted(false)} />
       </main></div>
     );
 
@@ -667,6 +699,17 @@ export default function App() {
                     />
                   </label>
                 )}
+                {room.gameId === "game-9" && (
+                  <label>
+                    Nombre de manches : <strong>{room.settings.gameSettings?.synopsisEclataxRounds ?? 1}</strong>
+                    <input type="range" min={1} max={10} step={1}
+                      value={room.settings.gameSettings?.synopsisEclataxRounds ?? 1}
+                      disabled={room.hostId !== playerId}
+                      onChange={(e) => update({ gameSettings: { synopsisEclataxRounds: Number(e.target.value) } })}
+                      style={{ width: "100%" }}
+                    />
+                  </label>
+                )}
                 {room.gameId === "game-3" && (
                   <label>
                     Temps du Petit Bac :{" "}
@@ -693,7 +736,7 @@ export default function App() {
                 {room.hostId === playerId ? (
                   <button
                     className="primary purple"
-                    onClick={() => socket.emit("room:start")}
+                    onClick={() => socket.emit("room:start", (r: any) => { if (!r?.ok) setError(startErrorMessage(r?.error)); })}
                   >
                     Lancer la partie <span>→</span>
                   </button>
@@ -753,7 +796,7 @@ export default function App() {
             </label>
             <div className="label-line">
               <span>Choisis un jeu</span>
-              <span className="optional">6 disponibles</span>
+              <span className="optional">9 disponibles</span>
             </div>
             <div className="games">
               {games.map((g) => (
