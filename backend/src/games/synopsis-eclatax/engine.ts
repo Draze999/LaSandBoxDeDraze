@@ -24,7 +24,7 @@ RÈGLES ABSOLUES :
 - Ton : cynique, absurde, presque insultant, parfois cru, mais sans haine visant une personne réelle ou un groupe protégé.
 - Pas de préambule, pas de guillemets, pas de liste, pas d'explication : uniquement le synopsis final.
 
-Avant de répondre, fais silencieusement une vérification : si un mot peut révéler directement l'œuvre ou un élément qui lui est exclusivement associé, retire-le. Si le synopsis est trop précis, réécris-le en plus générique.
+Avant de répondre, fais silencieusement une vérification : si un mot peut révéler directement l'œuvre ou un élément qui lui est exclusivement associé, remplace-le. Si le synopsis est trop précis, réécris-le en plus générique.
 
 L'objectif est un synopsis qui donne envie de dire « mais c'est quoi cette merde ? » tout en laissant suffisamment de place au jeu de devinette.`;
 
