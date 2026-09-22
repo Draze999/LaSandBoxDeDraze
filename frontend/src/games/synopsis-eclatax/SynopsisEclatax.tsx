@@ -53,7 +53,7 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
 
   useEffect(() => {
     const query = text.trim();
-    if (query.length < 2 || game?.phase !== "playing" || game.foundIds.includes(playerId)) {
+    if (query.length < 2 || game?.phase !== "playing" || game.foundIds.includes(playerId) || game.failedIds.includes(playerId)) {
       setSuggestions([]);
       setSearching(false);
       searchAbort.current?.abort();
@@ -78,7 +78,7 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
     }, 160);
 
     return () => clearTimeout(timer);
-  }, [text, game?.phase, game?.foundIds, playerId]);
+  }, [text, game?.phase, game?.foundIds, game?.failedIds, playerId]);
 
   const remaining = game?.endsAt === null || !game?.endsAt
     ? 0
@@ -173,13 +173,13 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
         ) : game.phase === "between" ? (
           <div className="game9-result">
             <p>Réponse : <strong>{game.original}</strong></p>
-            {winnerNames.length > 0 ? <p>🏆 Trouvé par {winnerNames.join(", ")} · +1 point chacun</p> : <p>Personne n'a trouvé cette manche.</p>}
+            {winnerNames.length > 0 ? <p>🏆 Trouvé par {winnerNames.join(", ")} · +1 point{winnerNames.length > 1 ? "s" : ""} chacun</p> : <p>Personne n'a trouvé cette manche.</p>}
             <p className="muted">Manche suivante dans un instant…</p>
           </div>
         ) : (
           <div className="game9-result">
             <p>Réponse : <strong>{game.original}</strong></p>
-            {winnerNames.length > 0 ? <p>🏆 {winnerNames.join(", ")} ont trouvé la dernière manche.</p> : <p>Personne n'a trouvé la dernière manche.</p>}
+            {winnerNames.length > 0 ? <p>🏆 {winnerNames.join(", ")} {winnerNames.length === 1 ? "a trouvé" : "ont trouvé"} la dernière manche.</p> : <p>Personne n'a trouvé la dernière manche.</p>}
             <div className="game9-final-scores">
               {scores.map(([id, score]) => (
                 <div key={id}><strong>{names.get(id) ?? "Joueur"}</strong><span>{score} point{score > 1 ? "s" : ""}</span></div>
@@ -194,11 +194,15 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
 
         {game.phase === "playing" && (
           <div className="game9-status">
-            {room.players.map((player) => (
-              <span key={player.id} className={game.foundIds.includes(player.id) ? "found" : ""}>
-                {game.foundIds.includes(player.id) ? "✓ " : ""}{player.pseudo}
-              </span>
-            ))}
+            {room.players.map((player) => {
+              const found = game.foundIds.includes(player.id);
+              const failed = game.failedIds.includes(player.id);
+              return (
+                <span key={player.id} className={found ? "found" : failed ? "failed" : ""}>
+                  {found ? "✓ " : failed ? "✕ " : ""}{player.pseudo}
+                </span>
+              );
+            })}
           </div>
         )}
       </section>
