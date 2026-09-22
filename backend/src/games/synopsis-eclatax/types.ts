@@ -7,6 +7,7 @@ export type SynopsisEclataxState = {
   totalRounds: number;
   playerIds: Set<string>;
   foundIds: Set<string>;
+  failedIds: Set<string>;
   roundWinnerIds: string[];
   cumulativeScores: Record<string, number>;
 };
@@ -19,6 +20,7 @@ export type SynopsisEclataxSnapshot = {
   roundNumber: number;
   totalRounds: number;
   foundIds: string[];
+  failedIds: string[];
   roundWinnerIds: string[];
   cumulativeScores: Record<string, number>;
   playerId: string;

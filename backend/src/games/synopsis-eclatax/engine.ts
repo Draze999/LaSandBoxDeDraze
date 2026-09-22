@@ -73,6 +73,7 @@ export class SynopsisEclataxEngine {
         totalRounds,
         playerIds: new Set(playerIds),
         foundIds: new Set(),
+        failedIds: new Set(),
         roundWinnerIds: [],
         cumulativeScores,
       };
@@ -129,6 +130,7 @@ export class SynopsisEclataxEngine {
     if (!state || state.phase !== "playing") return { ok: false as const, error: "NOT_PLAYING" };
     if (!state.playerIds.has(playerId)) return { ok: false as const, error: "PLAYER_NOT_FOUND" };
     if (state.foundIds.has(playerId)) return { ok: false as const, error: "ALREADY_FOUND" };
+    if (state.failedIds.has(playerId)) return { ok: false as const, error: "ALREADY_FAILED" };
 
     if (state.endsAt !== null && Date.now() >= state.endsAt) {
       this.finishRound(code);
@@ -139,10 +141,19 @@ export class SynopsisEclataxEngine {
     if (!guess) return { ok: false as const, error: "EMPTY_GUESS" };
 
     if (normalize(guess) !== normalize(state.original)) {
+      state.failedIds.add(playerId);
+
+      const done = state.foundIds.size + state.failedIds.size >= state.playerIds.size;
+      if (done) {
+        this.finishRound(code);
+        return { ok: true as const, correct: false, finished: true, failed: true };
+      }
+
       this.onState(code);
-      return { ok: true as const, correct: false, finished: false };
+      return { ok: true as const, correct: false, finished: false, failed: true };
     }
 
+    state.failedIds.delete(playerId);
     state.foundIds.add(playerId);
     state.roundWinnerIds.push(playerId);
     state.cumulativeScores[playerId] = (state.cumulativeScores[playerId] ?? 0) + 1;
@@ -168,6 +179,7 @@ export class SynopsisEclataxEngine {
       roundNumber: state.roundNumber,
       totalRounds: state.totalRounds,
       foundIds: [...state.foundIds],
+      failedIds: [...state.failedIds],
       roundWinnerIds: [...state.roundWinnerIds],
       cumulativeScores: { ...state.cumulativeScores },
       playerId,
@@ -179,6 +191,7 @@ export class SynopsisEclataxEngine {
     if (!state) return;
     state.playerIds.delete(playerId);
     state.foundIds.delete(playerId);
+    state.failedIds.delete(playerId);
     delete state.cumulativeScores[playerId];
 
     if (state.phase === "playing" && state.playerIds.size > 0 && state.foundIds.size >= state.playerIds.size) {

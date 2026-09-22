@@ -13,6 +13,7 @@ type Snapshot = {
   roundNumber: number;
   totalRounds: number;
   foundIds: string[];
+  failedIds: string[];
   roundWinnerIds: string[];
   cumulativeScores: Record<string, number>;
   playerId: string;
@@ -94,6 +95,7 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
           TIME_OVER: "Le temps est écoulé.",
           EMPTY_GUESS: "Choisis un animé.",
           ALREADY_FOUND: "Tu as déjà trouvé cet animé.",
+          ALREADY_FAILED: "Tu as déjà raté cette manche.",
           PLAYER_NOT_FOUND: "Joueur introuvable.",
         };
         setError(messages[r?.error] ?? "Impossible d'envoyer la réponse.");
@@ -103,8 +105,10 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
         setText("");
         setSuggestions([]);
         setError("");
-      } else {
-        setError("Raté ! Essaie encore.");
+      } else if (r.failed) {
+        setText("");
+        setSuggestions([]);
+        setError("Raté ! Tu ne peux plus répondre pour cette manche.");
       }
     });
   };
@@ -117,6 +121,8 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
   const winnerNames = game.roundWinnerIds.map((id) => names.get(id) ?? "Joueur");
   const scores = Object.entries(game.cumulativeScores).sort(([, a], [, b]) => b - a);
   const alreadyFound = game.foundIds.includes(playerId);
+  const alreadyFailed = game.failedIds.includes(playerId);
+  const locked = alreadyFound || alreadyFailed;
 
   return (
     <main className="game9-page">
@@ -146,11 +152,11 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
                   if (e.key === "Enter") { e.preventDefault(); submit(); }
                   if (e.key === "Escape") setSuggestions([]);
                 }}
-                placeholder={alreadyFound ? "Tu as trouvé !" : "Quel animé est-ce ?"}
+                placeholder={alreadyFound ? "Tu as trouvé !" : alreadyFailed ? "Raté !" : "Quel animé est-ce ?"}
                 maxLength={160}
-                disabled={alreadyFound}
+                disabled={locked}
               />
-              {!alreadyFound && suggestions.length > 0 && (
+              {!locked && suggestions.length > 0 && (
                 <div className="game9-suggestions">
                   {suggestions.map((suggestion) => (
                     <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setText(suggestion.name); setSuggestions([]); }}>
@@ -160,8 +166,8 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
                 </div>
               )}
             </div>
-            <button className="primary purple" onClick={() => submit()} disabled={alreadyFound}>
-              {alreadyFound ? "Trouvé ✓" : "Deviner →"}
+            <button className="primary purple" onClick={() => submit()} disabled={locked}>
+              {alreadyFound ? "Trouvé ✓" : alreadyFailed ? "Raté ✕" : "Deviner →"}
             </button>
           </div>
         ) : game.phase === "between" ? (
