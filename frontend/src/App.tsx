@@ -73,6 +73,13 @@ const games: Game[] = [
     icon: "🍳",
   },
   {
+    id: "game-7",
+    name: "Picasso",
+    description: "Reconnais l'image malgré le chaos.",
+    color: "#d34a9a",
+    icon: "🎨",
+  },
+  {
     id: "game-8",
     name: "À la suite",
     description: "Trouve le plus d'animés possible.",
@@ -85,13 +92,6 @@ const games: Game[] = [
     description: "Devine l'animé à partir d'un synopsis catastrophique.",
     color: "#d06b58",
     icon: "🤡",
-  },
-  {
-    id: "game-7",
-    name: "Picasso",
-    description: "Reconnais l'image malgré le chaos.",
-    color: "#d34a9a",
-    icon: "🎨",
   },
 ];
 
