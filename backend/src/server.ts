@@ -599,6 +599,16 @@ io.on("connection", (socket) => {
     cb?.({ ok: true });
   });
 
+  socket.on("game1:select-secret", (payload, cb) => {
+    const parsed = z.object({ candidateId: z.coerce.number().int() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(theOuCafe.selectSecret(
+      socket.data.roomCode ?? "",
+      socket.data.playerId ?? "",
+      parsed.data.candidateId,
+    ));
+  });
+
   socket.on("game1:request-state", (cb) => {
     const snapshot = theOuCafe.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
     if (!snapshot) return cb?.({ ok: false, error: "GAME_NOT_FOUND" });
