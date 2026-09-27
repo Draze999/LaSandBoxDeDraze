@@ -50,7 +50,8 @@ const SYNOPSIS_STYLES = [
   "Écris comme une bande-annonce parodique : grandiloquente dans le ton, mais terriblement méprisante dans le fond.",
   "Écris comme un résumé de soirée raconté le lendemain par quelqu'un qui a surtout retenu les moments gênants.",
   "Écris comme une personne qui doit vendre ce concept à des investisseurs mais n'y croit absolument pas.",
-  "Écris comme un professeur qui corrige une copie et démonte poliment, mais cruellement, le concept."
+  "Écris comme un professeur qui corrige une copie et démonte poliment, mais cruellement, le concept.",
+  "Écris comme un homme de Cro-Magnon qui découvre la télévision et tente de résumer ce qu'il voit."
 ] as const;
 
 function pickSynopsisStyle() {
