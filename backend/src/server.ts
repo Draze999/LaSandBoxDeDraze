@@ -622,7 +622,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("game1:choose", (payload, cb) => {
-    const parsed = z.object({ questionId: z.string(), side: z.enum(["left", "right"]) }).safeParse(payload);
+    const parsed = z.object({ questionId: z.string(), side: z.enum(["left", "right", "none"]) }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
     cb?.(theOuCafe.chooseQuestion(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.questionId, parsed.data.side));
   });
