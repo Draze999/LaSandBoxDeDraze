@@ -379,6 +379,7 @@ io.on("connection", (socket) => {
     socket.join(room.code);
     socket.data.playerId = player.id;
     socket.data.roomCode = room.code;
+    synopsisEclatax.setConnected(room.code, player.id, true);
 
     cb?.({
       ok: true,
@@ -557,7 +558,10 @@ io.on("connection", (socket) => {
 
     if (room.gameId === "game-9") {
       const rounds = room.settings.gameSettings?.synopsisEclataxRounds ?? 1;
-      const result = await synopsisEclatax.start(room.code, [...room.players.keys()], rounds);
+      const connectedPlayerIds = [...room.players.values()]
+        .filter((player) => Boolean(player.socketId))
+        .map((player) => player.id);
+      const result = await synopsisEclatax.start(room.code, connectedPlayerIds, rounds);
       if (!result.ok) return cb?.(result);
       for (const player of room.players.values()) {
         const snapshot = synopsisEclatax.snapshot(room.code, player.id);
@@ -601,16 +605,6 @@ io.on("connection", (socket) => {
     cb?.({ ok: true, snapshot });
   });
 
-  socket.on("game1:select-secret", (payload, cb) => {
-    const parsed = z.object({ candidateId: z.number() }).safeParse(payload);
-    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
-    void theOuCafe.selectSecret(
-      socket.data.roomCode ?? "",
-      socket.data.playerId ?? "",
-      parsed.data.candidateId,
-    ).then(cb);
-  });
-
   socket.on("game1:question", (payload, cb) => {
     const parsed = z.object({ left: z.string().max(80), right: z.string().max(80) }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
@@ -618,7 +612,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("game1:choose", (payload, cb) => {
-    const parsed = z.object({ questionId: z.string(), side: z.enum(["left", "right", "none"]) }).safeParse(payload);
+    const parsed = z.object({ questionId: z.string(), side: z.enum(["left", "right"]) }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
     cb?.(theOuCafe.chooseQuestion(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.questionId, parsed.data.side));
   });
@@ -903,6 +897,8 @@ io.on("connection", (socket) => {
 
     const result = disconnectPlayerBySocket(socket.id);
     if (!result) return;
+
+    synopsisEclatax.setConnected(roomCode, playerId, false);
 
     // A network loss or page refresh is temporary: keep the player and all game
     // state so the same player can reconnect without losing their score.

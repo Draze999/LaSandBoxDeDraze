@@ -21,8 +21,6 @@ RÈGLES ABSOLUES :
 - Évite aussi les détails qui deviennent des indices évidents par accumulation.
 - Si un élément semble spécifique à l'œuvre, remplace-le par une formulation complètement générique.
 - Le texte doit surtout se moquer du concept, de la narration, des personnages de manière générique, du rythme ou de l'expérience de spectateur.
-- Varie fortement ton vocabulaire et tes images d'une réponse à l'autre : évite les mêmes insultes, les mêmes métaphores, les mêmes structures (« on suit... », « un type... », « ça finit... ») et les mêmes blagues.
-- Ne recycle pas systématiquement les mêmes critiques (rythme, protagoniste, intrigue, pouvoir, entraînement, etc.) : cherche un angle différent à chaque texte.
 - Ton : cynique, absurde, presque insultant, parfois cru, mais sans haine visant une personne réelle ou un groupe protégé.
 - Pas de préambule, pas de guillemets, pas de liste, pas d'explication : uniquement le synopsis final.
 
@@ -30,37 +28,11 @@ Avant de répondre, fais silencieusement une vérification : si un mot peut rév
 
 L'objectif est un synopsis qui donne envie de dire « mais c'est quoi cette merde ? » tout en laissant suffisamment de place au jeu de devinette.`;
 
-const SYNOPSIS_STYLES = [
-  "Écris comme une critique cinéma blasée qui regrette d'avoir regardé ça.",
-  "Écris comme un avis internet d'une étoile, mesquin et totalement mauvaise foi.",
-  "Écris comme un résumé fait par un salarié épuisé qui veut rentrer chez lui.",
-  "Écris comme une chronique mondaine qui transforme tout en ragots ridicules.",
-  "Écris comme une fiche de produit catastrophique vendue avec beaucoup trop d'enthousiasme.",
-  "Écris comme un commentaire de spectateur qui n'a clairement pas compris pourquoi tout le monde aime ça.",
-  "Écris comme un journaliste cynique qui doit résumer le programme avec un budget de trois euros.",
-  "Écris comme un ami qui raconte le pitch après avoir dormi pendant la moitié de la séance.",
-  "Écris comme une critique gastronomique appliquée à une œuvre qui n'a absolument rien à voir avec la cuisine.",
-  "Écris comme un recruteur RH décrivant le concept avec un sérieux complètement déplacé.",
-  "Écris comme une annonce immobilière qui vend l'expérience de l'œuvre comme si c'était un appartement douteux.",
-  "Écris comme un avocat qui essaie de défendre l'œuvre alors que le dossier est franchement indéfendable.",
-  "Écris comme une notice administrative absurde qui tente de justifier pourquoi cette histoire existe.",
-  "Écris comme un influenceur qui survend une œuvre manifestement moyenne avec une mauvaise foi totale.",
-  "Écris comme un collègue qui explique l'histoire à la machine à café et s'en moque ouvertement.",
-  "Écris comme un critique de jeux vidéo qui met une note imaginaire à une histoire qu'il juge catastrophique.",
-  "Écris comme une bande-annonce parodique : grandiloquente dans le ton, mais terriblement méprisante dans le fond.",
-  "Écris comme un résumé de soirée raconté le lendemain par quelqu'un qui a surtout retenu les moments gênants.",
-  "Écris comme une personne qui doit vendre ce concept à des investisseurs mais n'y croit absolument pas.",
-  "Écris comme un professeur qui corrige une copie et démonte poliment, mais cruellement, le concept."
-] as const;
-
-function pickSynopsisStyle() {
-  return SYNOPSIS_STYLES[Math.floor(Math.random() * SYNOPSIS_STYLES.length)];
-}
-
 export class SynopsisEclataxEngine {
   private states = new Map<string, SynopsisEclataxState>();
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private nextRoundTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private connectedIds = new Map<string, Set<string>>();
 
   constructor(private readonly onState: Callback) {}
 
@@ -71,6 +43,7 @@ export class SynopsisEclataxEngine {
     const rounds = Math.max(1, Math.min(10, Math.floor(totalRounds)));
     const scores = Object.fromEntries(playerIds.map((id) => [id, 0]));
     this.states.delete(roomCode);
+    this.connectedIds.set(roomCode, new Set(playerIds));
 
     return this.startRound(roomCode, playerIds, 1, rounds, scores);
   }
@@ -90,17 +63,23 @@ export class SynopsisEclataxEngine {
       const row = await getRandomAnime();
       if (!row?.name) return { ok: false as const, error: "NO_CONTENT" };
 
-      const synopsis = await generateSynopsis(String(row.name), pickSynopsisStyle());
+      const synopsis = await generateSynopsis(String(row.name));
       const endsAt = Date.now() + ROUND_DURATION_MS;
 
-      const state: SynopsisEclataxState = {
+      const connected = this.connectedIds.get(roomCode) ?? new Set(playerIds);
+    const activePlayerIds = playerIds.filter((id) => connected.has(id));
+    if (activePlayerIds.length === 0) {
+      return { ok: false as const, error: "NO_CONNECTED_PLAYERS" };
+    }
+
+    const state: SynopsisEclataxState = {
         synopsis,
         original: String(row.name),
         phase: "playing",
         endsAt,
         roundNumber,
         totalRounds,
-        playerIds: new Set(playerIds),
+        playerIds: new Set(activePlayerIds),
         foundIds: new Set(),
         failedIds: new Set(),
         roundWinnerIds: [],
@@ -138,7 +117,12 @@ export class SynopsisEclataxEngine {
     state.phase = "between";
     this.onState(roomCode);
 
-    const playerIds = [...state.playerIds];
+    const connected = this.connectedIds.get(roomCode) ?? new Set(state.playerIds);
+    const playerIds = [...state.playerIds].filter((id) => connected.has(id));
+    if (playerIds.length === 0) {
+      this.clear(roomCode);
+      return;
+    }
     const roundNumber = state.roundNumber + 1;
     const totalRounds = state.totalRounds;
     const scores = { ...state.cumulativeScores };
@@ -172,8 +156,7 @@ export class SynopsisEclataxEngine {
     if (normalize(guess) !== normalize(state.original)) {
       state.failedIds.add(playerId);
 
-      const done = state.foundIds.size + state.failedIds.size >= state.playerIds.size;
-      if (done) {
+      if (this.allPlayersAnswered(state)) {
         this.finishRound(code);
         return { ok: true as const, correct: false, finished: true, failed: true };
       }
@@ -187,7 +170,7 @@ export class SynopsisEclataxEngine {
     state.roundWinnerIds.push(playerId);
     state.cumulativeScores[playerId] = (state.cumulativeScores[playerId] ?? 0) + 1;
 
-    if (state.foundIds.size >= state.playerIds.size) {
+    if (this.allPlayersAnswered(state)) {
       this.finishRound(code);
       return { ok: true as const, correct: true, finished: true, score: 1 };
     }
@@ -215,16 +198,49 @@ export class SynopsisEclataxEngine {
     };
   }
 
+  private allPlayersAnswered(state: SynopsisEclataxState) {
+    return state.playerIds.size > 0 &&
+      state.foundIds.size + state.failedIds.size >= state.playerIds.size;
+  }
+
+  setConnected(code: string, playerId: string, connected: boolean) {
+    const ids = this.connectedIds.get(code);
+    if (!ids) return;
+
+    if (connected) {
+      ids.add(playerId);
+      return;
+    }
+
+    ids.delete(playerId);
+    const state = this.states.get(code);
+    if (!state || state.phase !== "playing" || !state.playerIds.has(playerId)) return;
+
+    // A disconnected player cannot answer the current round. Marking the
+    // round as failed prevents one lost socket from keeping everyone else
+    // waiting forever. The player can participate again on the next round
+    // after reconnecting.
+    if (!state.foundIds.has(playerId) && !state.failedIds.has(playerId)) {
+      state.failedIds.add(playerId);
+    }
+
+    if (this.allPlayersAnswered(state)) {
+      this.finishRound(code);
+    } else {
+      this.onState(code);
+    }
+  }
+
   removePlayer(code: string, playerId: string) {
     const state = this.states.get(code);
     if (!state) return;
+    this.connectedIds.get(code)?.delete(playerId);
     state.playerIds.delete(playerId);
     state.foundIds.delete(playerId);
     state.failedIds.delete(playerId);
     delete state.cumulativeScores[playerId];
 
-    if (state.phase === "playing" && state.playerIds.size > 0 &&
-        state.foundIds.size + state.failedIds.size >= state.playerIds.size) {
+    if (state.phase === "playing" && this.allPlayersAnswered(state)) {
       this.finishRound(code);
       return;
     }
@@ -240,6 +256,7 @@ export class SynopsisEclataxEngine {
   clear(code: string) {
     this.clearTimers(code);
     this.states.delete(code);
+    this.connectedIds.delete(code);
   }
 
   private clearTimer(code: string) {
@@ -256,7 +273,7 @@ export class SynopsisEclataxEngine {
   }
 }
 
-async function generateSynopsis(animeName: string, style: string) {
+async function generateSynopsis(animeName: string) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_NOT_CONFIGURED");
 
@@ -273,12 +290,7 @@ async function generateSynopsis(animeName: string, style: string) {
         { role: "developer", content: DEVELOPER_PROMPT },
         {
           role: "user",
-          content: `Anime à transformer : ${animeName}
-
-Angle d'écriture imposé pour cette manche :
-${style}
-
-Même avec cet angle, respecte toutes les règles de non-divulgation. Ne reprends pas mot pour mot la formulation de l'angle : utilise-la seulement comme direction de ton et de construction.`,
+          content: `Anime à transformer : ${animeName}`,
         },
       ],
     }),
