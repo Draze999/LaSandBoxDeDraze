@@ -9,7 +9,7 @@ type Question = {
   authorId: string;
   left: string;
   right: string;
-  chosen: "left" | "right" | "neither" | null;
+  chosen: "left" | "right" | null;
 };
 type Answer = {
   id: string;
@@ -21,7 +21,7 @@ type Snapshot = {
   category: "anime" | "character";
   phase: "choosing" | "playing" | "finished";
   targetPlayerId: string;
-  options?: { id: number; name: string; imageUrl?: string | null; animeName?: string | null }[];
+  candidates: Array<{ id: number; name: string; imageUrl?: string | null }>;
   secret?: {
     id: number;
     name: string;
@@ -107,40 +107,42 @@ export default function TheOuCafe({
     return (
       <main className="game1-page">
         <section className="game1-shell">
-          <p className="eyebrow">Thé ou Café · Manche {game.roundNumber}</p>
-          <h1>
-            {isTarget ? "Choisis ton élément secret." : "Le maître choisit son secret…"}
-          </h1>
-          <p className="game1-subtitle">
-            {isTarget
-              ? "Trois propositions aléatoires : choisis celle que les autres devront deviner."
-              : `${player(game.targetPlayerId)} choisit l'élément à faire deviner.`}
-          </p>
+          <header className="game1-header">
+            <div>
+              <p className="eyebrow">Thé ou Café · Manche {game.roundNumber}</p>
+              <h1>{isTarget ? "Choisis ton élément secret" : "Le maître choisit son élément…"}</h1>
+              <p className="game1-subtitle">
+                {isTarget
+                  ? "Choisis une des trois propositions. Les autres joueurs ne verront pas ton choix."
+                  : `${player(game.targetPlayerId)} choisit parmi 3 propositions.`}
+              </p>
+            </div>
+          </header>
 
           {isTarget ? (
-            <div className="game1-secret-options">
-              {(game.options ?? []).map((option) => (
+            <div className="game1-candidates">
+              {game.candidates.map((candidate) => (
                 <button
-                  className="game1-secret-option"
-                  key={option.id}
-                  onClick={() =>
-                    socket.emit("game1:select-secret", { optionId: option.id })
-                  }
+                  className="game1-candidate"
+                  key={candidate.id}
+                  onClick={() => {
+                    socket.emit(
+                      "game1:select-secret",
+                      { candidateId: candidate.id },
+                      (r: any) => {
+                        if (!r?.ok) return;
+                      },
+                    );
+                  }}
                 >
-                  {option.imageUrl && <img src={option.imageUrl} alt="" />}
-                  <span>
-                    <strong>{option.name}</strong>
-                    {game.category === "character" && option.animeName && (
-                      <small>{option.animeName}</small>
-                    )}
-                  </span>
+                  {candidate.imageUrl && <img src={candidate.imageUrl} alt="" />}
+                  <strong>{candidate.name}</strong>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="game1-waiting-choice">
-              <div className="game1-waiting-dot" />
-              <span>En attente du choix de {player(game.targetPlayerId)}…</span>
+            <div className="game1-panel loading-choice">
+              <p>En attente du choix de {player(game.targetPlayerId)}…</p>
             </div>
           )}
         </section>
@@ -232,13 +234,13 @@ export default function TheOuCafe({
                 <span>
                   Plutôt{" "}
                   <strong
-                    className={q.chosen === "left" ? "chosen-word" : q.chosen === "neither" ? "chosen-word rejected-word" : ""}
+                    className={q.chosen === "left" ? "chosen-word" : ""}
                   >
                     {q.left}
                   </strong>{" "}
                   ou{" "}
                   <strong
-                    className={q.chosen === "right" ? "chosen-word" : q.chosen === "neither" ? "chosen-word rejected-word" : ""}
+                    className={q.chosen === "right" ? "chosen-word" : ""}
                   >
                     {q.right}
                   </strong>{" "}
@@ -329,27 +331,6 @@ export default function TheOuCafe({
                       }
                     >
                       {q.right}
-                    </button>
-                    <button
-                      className={q.chosen === "neither" ? "chosen neither" : ""}
-                      onClick={() =>
-                        socket.emit(
-                          "game1:choose",
-                          { questionId: q.id, side: "neither" },
-                          (r: any) => {
-                            if (r?.ok) {
-                              socket.emit(
-                                "game1:request-state",
-                                (state: any) => {
-                                  if (state?.ok) setGame(state.snapshot);
-                                }
-                              );
-                            }
-                          }
-                        )
-                      }
-                    >
-                      Aucun des 2
                     </button>
                   </div>
                 </div>
