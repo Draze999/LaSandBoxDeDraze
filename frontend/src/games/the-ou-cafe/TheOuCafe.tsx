@@ -9,7 +9,7 @@ type Question = {
   authorId: string;
   left: string;
   right: string;
-  chosen: "left" | "right" | null;
+  chosen: "left" | "right" | "neither" | null;
 };
 type Answer = {
   id: string;
@@ -19,8 +19,9 @@ type Answer = {
 };
 type Snapshot = {
   category: "anime" | "character";
-  phase: "playing" | "finished";
+  phase: "choosing" | "playing" | "finished";
   targetPlayerId: string;
+  options?: { id: number; name: string; imageUrl?: string | null; animeName?: string | null }[];
   secret?: {
     id: number;
     name: string;
@@ -98,6 +99,50 @@ export default function TheOuCafe({
         <section className="game1-shell loading">
           <p>Thé ou Café</p>
           <h1>Préparation de la partie…</h1>
+        </section>
+      </main>
+    );
+
+  if (game.phase === "choosing")
+    return (
+      <main className="game1-page">
+        <section className="game1-shell">
+          <p className="eyebrow">Thé ou Café · Manche {game.roundNumber}</p>
+          <h1>
+            {isTarget ? "Choisis ton élément secret." : "Le maître choisit son secret…"}
+          </h1>
+          <p className="game1-subtitle">
+            {isTarget
+              ? "Trois propositions aléatoires : choisis celle que les autres devront deviner."
+              : `${player(game.targetPlayerId)} choisit l'élément à faire deviner.`}
+          </p>
+
+          {isTarget ? (
+            <div className="game1-secret-options">
+              {(game.options ?? []).map((option) => (
+                <button
+                  className="game1-secret-option"
+                  key={option.id}
+                  onClick={() =>
+                    socket.emit("game1:select-secret", { optionId: option.id })
+                  }
+                >
+                  {option.imageUrl && <img src={option.imageUrl} alt="" />}
+                  <span>
+                    <strong>{option.name}</strong>
+                    {game.category === "character" && option.animeName && (
+                      <small>{option.animeName}</small>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="game1-waiting-choice">
+              <div className="game1-waiting-dot" />
+              <span>En attente du choix de {player(game.targetPlayerId)}…</span>
+            </div>
+          )}
         </section>
       </main>
     );
@@ -187,13 +232,13 @@ export default function TheOuCafe({
                 <span>
                   Plutôt{" "}
                   <strong
-                    className={q.chosen === "left" ? "chosen-word" : ""}
+                    className={q.chosen === "left" ? "chosen-word" : q.chosen === "neither" ? "chosen-word rejected-word" : ""}
                   >
                     {q.left}
                   </strong>{" "}
                   ou{" "}
                   <strong
-                    className={q.chosen === "right" ? "chosen-word" : ""}
+                    className={q.chosen === "right" ? "chosen-word" : q.chosen === "neither" ? "chosen-word rejected-word" : ""}
                   >
                     {q.right}
                   </strong>{" "}
@@ -284,6 +329,27 @@ export default function TheOuCafe({
                       }
                     >
                       {q.right}
+                    </button>
+                    <button
+                      className={q.chosen === "neither" ? "chosen neither" : ""}
+                      onClick={() =>
+                        socket.emit(
+                          "game1:choose",
+                          { questionId: q.id, side: "neither" },
+                          (r: any) => {
+                            if (r?.ok) {
+                              socket.emit(
+                                "game1:request-state",
+                                (state: any) => {
+                                  if (state?.ok) setGame(state.snapshot);
+                                }
+                              );
+                            }
+                          }
+                        )
+                      }
+                    >
+                      Aucun des 2
                     </button>
                   </div>
                 </div>

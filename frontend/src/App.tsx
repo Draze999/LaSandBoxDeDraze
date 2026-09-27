@@ -101,6 +101,7 @@ function startErrorMessage(error: string) {
     AI_GENERATION_FAILED: "Impossible de générer le synopsis avec l'IA.",
     NO_CONTENT: "Aucun animé disponible dans la base de données.",
     NOT_ENOUGH_PLAYERS: "Il faut au moins 2 joueurs.",
+    START_IN_PROGRESS: "La partie est déjà en cours de préparation.",
   };
   return messages[error] ?? "Impossible de lancer la partie.";
 }
@@ -180,19 +181,20 @@ export default function App() {
     [room, setRoom] = useState<Room | null>(null),
     [playerId, setPlayerId] = useState(""),
     [error, setError] = useState(""),
-    [started, setStarted] = useState(false);
+    [started, setStarted] = useState(false),
+    [startingGame, setStartingGame] = useState(false);
   useEffect(() => {
     const updated = (r: Room) => setRoom(r);
-    const start = () => setStarted(true);
-    const startGame3 = () => setStarted(true);
-    const startGame1 = () => setStarted(true);
-    const startGame2 = () => setStarted(true);
-    const startGame4 = () => setStarted(true);
-    const startGame5 = () => setStarted(true);
-    const startGame6 = () => setStarted(true);
-    const startGame7 = () => setStarted(true);
-    const startGame8 = () => setStarted(true);
-    const startGame9 = () => setStarted(true);
+    const start = () => { setStarted(true); setStartingGame(false); };
+    const startGame3 = () => { setStarted(true); setStartingGame(false); };
+    const startGame1 = () => { setStarted(true); setStartingGame(false); };
+    const startGame2 = () => { setStarted(true); setStartingGame(false); };
+    const startGame4 = () => { setStarted(true); setStartingGame(false); };
+    const startGame5 = () => { setStarted(true); setStartingGame(false); };
+    const startGame6 = () => { setStarted(true); setStartingGame(false); };
+    const startGame7 = () => { setStarted(true); setStartingGame(false); };
+    const startGame8 = () => { setStarted(true); setStartingGame(false); };
+    const startGame9 = () => { setStarted(true); setStartingGame(false); };
 
     const restore = () => {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -736,9 +738,23 @@ export default function App() {
                 {room.hostId === playerId ? (
                   <button
                     className="primary purple"
-                    onClick={() => socket.emit("room:start", (r: any) => { if (!r?.ok) setError(startErrorMessage(r?.error)); })}
+                    disabled={room.gameId === "game-9" && startingGame}
+                    onClick={() => {
+                      if (room.gameId === "game-9") {
+                        if (startingGame) return;
+                        setStartingGame(true);
+                      }
+                      socket.emit("room:start", (r: any) => {
+                        if (!r?.ok) {
+                          setStartingGame(false);
+                          setError(startErrorMessage(r?.error));
+                        }
+                      });
+                    }}
                   >
-                    Lancer la partie <span>→</span>
+                    {room.gameId === "game-9" && startingGame
+                      ? "Génération du synopsis…"
+                      : <>Lancer la partie <span>→</span></>}
                   </button>
                 ) : (
                   <p className="waiting">En attente du lancement par l'hôte…</p>

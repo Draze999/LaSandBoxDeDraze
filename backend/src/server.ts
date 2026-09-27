@@ -38,6 +38,7 @@ const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
 const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
 const emptyRoomTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const startingSynopsisEclataxRooms = new Set<string>();
 
 await app.register(cors, {
   origin: CLIENT_ORIGIN,
@@ -556,14 +557,23 @@ io.on("connection", (socket) => {
     }
 
     if (room.gameId === "game-9") {
-      const rounds = room.settings.gameSettings?.synopsisEclataxRounds ?? 1;
-      const result = await synopsisEclatax.start(room.code, [...room.players.keys()], rounds);
-      if (!result.ok) return cb?.(result);
-      for (const player of room.players.values()) {
-        const snapshot = synopsisEclatax.snapshot(room.code, player.id);
-        if (snapshot && player.socketId) io.to(player.socketId).emit("game9:start", snapshot);
+      if (startingSynopsisEclataxRooms.has(room.code)) {
+        return cb?.({ ok: false, error: "START_IN_PROGRESS" });
       }
-      return cb?.({ ok: true });
+
+      startingSynopsisEclataxRooms.add(room.code);
+      try {
+        const rounds = room.settings.gameSettings?.synopsisEclataxRounds ?? 1;
+        const result = await synopsisEclatax.start(room.code, [...room.players.keys()], rounds);
+        if (!result.ok) return cb?.(result);
+        for (const player of room.players.values()) {
+          const snapshot = synopsisEclatax.snapshot(room.code, player.id);
+          if (snapshot && player.socketId) io.to(player.socketId).emit("game9:start", snapshot);
+        }
+        return cb?.({ ok: true });
+      } finally {
+        startingSynopsisEclataxRooms.delete(room.code);
+      }
     }
 
     if (room.gameId === "game-3") {
@@ -601,6 +611,12 @@ io.on("connection", (socket) => {
     cb?.({ ok: true, snapshot });
   });
 
+  socket.on("game1:select-secret", (payload, cb) => {
+    const parsed = z.object({ optionId: z.number().int() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(theOuCafe.selectSecret(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.optionId));
+  });
+
   socket.on("game1:question", (payload, cb) => {
     const parsed = z.object({ left: z.string().max(80), right: z.string().max(80) }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
@@ -608,7 +624,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("game1:choose", (payload, cb) => {
-    const parsed = z.object({ questionId: z.string(), side: z.enum(["left", "right"]) }).safeParse(payload);
+    const parsed = z.object({ questionId: z.string(), side: z.enum(["left", "right", "neither"]) }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
     cb?.(theOuCafe.chooseQuestion(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.questionId, parsed.data.side));
   });

@@ -6,7 +6,7 @@ import {
   THE_OU_CAFE_TARGET_NO_FIND_POINTS,
   type TheOuCafeCategory,
 } from "./constants.js";
-import type { TheOuCafeAnswer, TheOuCafeQuestion, TheOuCafeSnapshot } from "./types.js";
+import type { TheOuCafeAnswer, TheOuCafeQuestion, TheOuCafeSnapshot, TheOuCafeOption } from "./types.js";
 
 type Callback = (roomCode: string) => void;
 
@@ -19,9 +19,10 @@ type State = {
     imageUrl?: string | null;
     animeName?: string | null;
   };
+  options: TheOuCafeOption[];
   questions: TheOuCafeQuestion[];
   answers: TheOuCafeAnswer[];
-  phase: "playing" | "finished";
+  phase: "choosing" | "playing" | "finished";
   winnerId: string | null;
   roundScores: Record<string, number>;
   roundNumber: number;
@@ -52,14 +53,31 @@ export class TheOuCafeEngine {
     const targetPlayerId = order[index];
     this.orderIndex.set(roomCode, index + 1);
 
-    const secret = category === "anime" ? await getRandomAnime() : await getRandomCharacter();
-    if (!secret) return { ok: false as const, error: "DATABASE_EMPTY" };
+    const options: TheOuCafeOption[] = [];
+    const seenIds = new Set<number>();
 
-    let characterAnimeName: string | null = null;
-    if (category === "character") {
-      const characterData = await getCharacterGameData(secret.id);
-      characterAnimeName = characterData?.anime_name ?? null;
+    for (let attempt = 0; options.length < 3 && attempt < 12; attempt++) {
+      const candidate = category === "anime" ? await getRandomAnime() : await getRandomCharacter();
+      if (!candidate) continue;
+      const id = Number(candidate.id);
+      if (!Number.isFinite(id) || seenIds.has(id)) continue;
+
+      let animeName: string | null = null;
+      if (category === "character") {
+        const characterData = await getCharacterGameData(candidate.id);
+        animeName = characterData?.anime_name ?? null;
+      }
+
+      seenIds.add(id);
+      options.push({
+        id,
+        name: String(candidate.name),
+        imageUrl: candidate.image_url ?? null,
+        animeName,
+      });
     }
+
+    if (!options.length) return { ok: false as const, error: "DATABASE_EMPTY" };
 
     const previous = this.cumulative.get(roomCode) ?? {};
     const cumulative = Object.fromEntries(playerIds.map((id) => [id, previous[id] ?? 0]));
@@ -69,14 +87,15 @@ export class TheOuCafeEngine {
       category,
       targetPlayerId,
       secret: {
-        id: Number(secret.id),
-        name: String(secret.name),
-        imageUrl: secret.image_url ?? null,
-        animeName: characterAnimeName,
+        id: options[0].id,
+        name: options[0].name,
+        imageUrl: options[0].imageUrl ?? null,
+        animeName: options[0].animeName ?? null,
       },
+      options,
       questions: [],
       answers: [],
-      phase: "playing",
+      phase: "choosing",
       winnerId: null,
       roundScores: Object.fromEntries(playerIds.map((id) => [id, 0])),
       roundNumber: (this.states.get(roomCode)?.roundNumber ?? 0) + 1,
@@ -106,13 +125,32 @@ export class TheOuCafeEngine {
     return { ok: true as const };
   }
 
-  chooseQuestion(roomCode: string, playerId: string, questionId: string, side: "left"|"right") {
+  chooseQuestion(roomCode: string, playerId: string, questionId: string, side: "left"|"right"|"neither") {
     const s = this.states.get(roomCode);
     if (!s || s.phase !== "playing") return { ok: false as const, error: "NOT_PLAYING" };
     if (playerId !== s.targetPlayerId) return { ok: false as const, error: "NOT_TARGET" };
     const q = s.questions.find((x) => x.id === questionId);
     if (!q) return { ok: false as const, error: "QUESTION_NOT_FOUND" };
     q.chosen = side;
+    this.onState(roomCode);
+    return { ok: true as const };
+  }
+
+  selectSecret(roomCode: string, playerId: string, optionId: number) {
+    const s = this.states.get(roomCode);
+    if (!s || s.phase !== "choosing") return { ok: false as const, error: "NOT_CHOOSING" };
+    if (playerId !== s.targetPlayerId) return { ok: false as const, error: "NOT_TARGET" };
+
+    const option = s.options.find((candidate) => candidate.id === optionId);
+    if (!option) return { ok: false as const, error: "OPTION_NOT_FOUND" };
+
+    s.secret = {
+      id: option.id,
+      name: option.name,
+      imageUrl: option.imageUrl ?? null,
+      animeName: option.animeName ?? null,
+    };
+    s.phase = "playing";
     this.onState(roomCode);
     return { ok: true as const };
   }
@@ -179,8 +217,14 @@ export class TheOuCafeEngine {
       cumulativeScores: this.cumulative.get(roomCode) ?? {},
       roundNumber: s.roundNumber,
     };
-    if (s.phase === "finished" || playerId === s.targetPlayerId) snap.secret = s.secret;
-    else delete snap.secret;
+    if (s.phase === "choosing" && playerId === s.targetPlayerId) {
+      snap.options = s.options;
+    }
+    if (s.phase === "finished" || (s.phase !== "choosing" && playerId === s.targetPlayerId)) {
+      snap.secret = s.secret;
+    } else {
+      delete snap.secret;
+    }
     return snap;
   }
 

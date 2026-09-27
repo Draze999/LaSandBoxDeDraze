@@ -21,12 +21,41 @@ RÈGLES ABSOLUES :
 - Évite aussi les détails qui deviennent des indices évidents par accumulation.
 - Si un élément semble spécifique à l'œuvre, remplace-le par une formulation complètement générique.
 - Le texte doit surtout se moquer du concept, de la narration, des personnages de manière générique, du rythme ou de l'expérience de spectateur.
+- Varie fortement ton vocabulaire et tes images d'une réponse à l'autre : évite les mêmes insultes, les mêmes métaphores, les mêmes structures (« on suit... », « un type... », « ça finit... ») et les mêmes blagues.
+- Ne recycle pas systématiquement les mêmes critiques (rythme, protagoniste, intrigue, pouvoir, entraînement, etc.) : cherche un angle différent à chaque texte.
 - Ton : cynique, absurde, presque insultant, parfois cru, mais sans haine visant une personne réelle ou un groupe protégé.
 - Pas de préambule, pas de guillemets, pas de liste, pas d'explication : uniquement le synopsis final.
 
 Avant de répondre, fais silencieusement une vérification : si un mot peut révéler directement l'œuvre ou un élément qui lui est exclusivement associé, retire-le. Si le synopsis est trop précis, réécris-le en plus générique.
 
 L'objectif est un synopsis qui donne envie de dire « mais c'est quoi cette merde ? » tout en laissant suffisamment de place au jeu de devinette.`;
+
+const SYNOPSIS_STYLES = [
+  "Écris comme une critique cinéma blasée qui regrette d'avoir regardé ça.",
+  "Écris comme un avis internet d'une étoile, mesquin et totalement mauvaise foi.",
+  "Écris comme un résumé fait par un salarié épuisé qui veut rentrer chez lui.",
+  "Écris comme une chronique mondaine qui transforme tout en ragots ridicules.",
+  "Écris comme une fiche de produit catastrophique vendue avec beaucoup trop d'enthousiasme.",
+  "Écris comme un commentaire de spectateur qui n'a clairement pas compris pourquoi tout le monde aime ça.",
+  "Écris comme un journaliste cynique qui doit résumer le programme avec un budget de trois euros.",
+  "Écris comme un ami qui raconte le pitch après avoir dormi pendant la moitié de la séance.",
+  "Écris comme une critique gastronomique appliquée à une œuvre qui n'a absolument rien à voir avec la cuisine.",
+  "Écris comme un recruteur RH décrivant le concept avec un sérieux complètement déplacé.",
+  "Écris comme une annonce immobilière qui vend l'expérience de l'œuvre comme si c'était un appartement douteux.",
+  "Écris comme un avocat qui essaie de défendre l'œuvre alors que le dossier est franchement indéfendable.",
+  "Écris comme une notice administrative absurde qui tente de justifier pourquoi cette histoire existe.",
+  "Écris comme un influenceur qui survend une œuvre manifestement moyenne avec une mauvaise foi totale.",
+  "Écris comme un collègue qui explique l'histoire à la machine à café et s'en moque ouvertement.",
+  "Écris comme un critique de jeux vidéo qui met une note imaginaire à une histoire qu'il juge catastrophique.",
+  "Écris comme une bande-annonce parodique : grandiloquente dans le ton, mais terriblement méprisante dans le fond.",
+  "Écris comme un résumé de soirée raconté le lendemain par quelqu'un qui a surtout retenu les moments gênants.",
+  "Écris comme une personne qui doit vendre ce concept à des investisseurs mais n'y croit absolument pas.",
+  "Écris comme un professeur qui corrige une copie et démonte poliment, mais cruellement, le concept."
+] as const;
+
+function pickSynopsisStyle() {
+  return SYNOPSIS_STYLES[Math.floor(Math.random() * SYNOPSIS_STYLES.length)];
+}
 
 export class SynopsisEclataxEngine {
   private states = new Map<string, SynopsisEclataxState>();
@@ -61,7 +90,7 @@ export class SynopsisEclataxEngine {
       const row = await getRandomAnime();
       if (!row?.name) return { ok: false as const, error: "NO_CONTENT" };
 
-      const synopsis = await generateSynopsis(String(row.name));
+      const synopsis = await generateSynopsis(String(row.name), pickSynopsisStyle());
       const endsAt = Date.now() + ROUND_DURATION_MS;
 
       const state: SynopsisEclataxState = {
@@ -227,7 +256,7 @@ export class SynopsisEclataxEngine {
   }
 }
 
-async function generateSynopsis(animeName: string) {
+async function generateSynopsis(animeName: string, style: string) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_NOT_CONFIGURED");
 
@@ -244,7 +273,12 @@ async function generateSynopsis(animeName: string) {
         { role: "developer", content: DEVELOPER_PROMPT },
         {
           role: "user",
-          content: `Anime à transformer : ${animeName}`,
+          content: `Anime à transformer : ${animeName}
+
+Angle d'écriture imposé pour cette manche :
+${style}
+
+Même avec cet angle, respecte toutes les règles de non-divulgation. Ne reprends pas mot pour mot la formulation de l'angle : utilise-la seulement comme direction de ton et de construction.`,
         },
       ],
     }),
