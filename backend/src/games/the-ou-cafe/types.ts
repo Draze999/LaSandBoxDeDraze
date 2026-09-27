@@ -19,8 +19,9 @@ export type TheOuCafeAnswer = {
 
 export type TheOuCafeSnapshot = {
   category: TheOuCafeCategory;
-  phase: "playing" | "finished";
+  phase: "choosing" | "playing" | "finished";
   targetPlayerId: string;
+  candidates: Array<{ id: number; name: string; imageUrl?: string | null }>;
   secret?: { id: number; name: string; imageUrl?: string | null; animeName?: string | null };
   questions: TheOuCafeQuestion[];
   answers: TheOuCafeAnswer[];

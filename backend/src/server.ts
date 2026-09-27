@@ -601,6 +601,16 @@ io.on("connection", (socket) => {
     cb?.({ ok: true, snapshot });
   });
 
+  socket.on("game1:select-secret", (payload, cb) => {
+    const parsed = z.object({ candidateId: z.number() }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    void theOuCafe.selectSecret(
+      socket.data.roomCode ?? "",
+      socket.data.playerId ?? "",
+      parsed.data.candidateId,
+    ).then(cb);
+  });
+
   socket.on("game1:question", (payload, cb) => {
     const parsed = z.object({ left: z.string().max(80), right: z.string().max(80) }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });

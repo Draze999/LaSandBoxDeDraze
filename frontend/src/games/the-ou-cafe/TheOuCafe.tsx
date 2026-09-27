@@ -19,8 +19,9 @@ type Answer = {
 };
 type Snapshot = {
   category: "anime" | "character";
-  phase: "playing" | "finished";
+  phase: "choosing" | "playing" | "finished";
   targetPlayerId: string;
+  candidates: Array<{ id: number; name: string; imageUrl?: string | null }>;
   secret?: {
     id: number;
     name: string;
@@ -98,6 +99,52 @@ export default function TheOuCafe({
         <section className="game1-shell loading">
           <p>Thé ou Café</p>
           <h1>Préparation de la partie…</h1>
+        </section>
+      </main>
+    );
+
+  if (game.phase === "choosing")
+    return (
+      <main className="game1-page">
+        <section className="game1-shell">
+          <header className="game1-header">
+            <div>
+              <p className="eyebrow">Thé ou Café · Manche {game.roundNumber}</p>
+              <h1>{isTarget ? "Choisis ton élément secret" : "Le maître choisit son élément…"}</h1>
+              <p className="game1-subtitle">
+                {isTarget
+                  ? "Choisis une des trois propositions. Les autres joueurs ne verront pas ton choix."
+                  : `${player(game.targetPlayerId)} choisit parmi 3 propositions.`}
+              </p>
+            </div>
+          </header>
+
+          {isTarget ? (
+            <div className="game1-candidates">
+              {game.candidates.map((candidate) => (
+                <button
+                  className="game1-candidate"
+                  key={candidate.id}
+                  onClick={() => {
+                    socket.emit(
+                      "game1:select-secret",
+                      { candidateId: candidate.id },
+                      (r: any) => {
+                        if (!r?.ok) return;
+                      },
+                    );
+                  }}
+                >
+                  {candidate.imageUrl && <img src={candidate.imageUrl} alt="" />}
+                  <strong>{candidate.name}</strong>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="game1-panel loading-choice">
+              <p>En attente du choix de {player(game.targetPlayerId)}…</p>
+            </div>
+          )}
         </section>
       </main>
     );
@@ -181,22 +228,27 @@ export default function TheOuCafe({
               </div>
               <h3>Questions posées</h3>
               {[...game.questions].reverse().map((q) => (
-                <div className="item" key={q.id}>
-                  <b>{player(q.authorId)}</b>
-                  <span>
-                    Plutôt{" "}
-                    <strong className={q.chosen === "left" ? "chosen-word" : q.chosen === "none" ? "chosen-word chosen-word-none" : ""}>
-                      {q.left}
-                    </strong>{" "}
-                    ou{" "}
-                    <strong className={q.chosen === "right" ? "chosen-word" : q.chosen === "none" ? "chosen-word chosen-word-none" : ""}>
-                      {q.right}
-                    </strong>{" "}
-                    ?
-                  </span>
-                </div>
-              ))}
-            </div>
+              <div className="item" key={q.id}>
+                <b>{player(q.authorId)}</b>
+
+                <span>
+                  Plutôt{" "}
+                  <strong
+                    className={q.chosen === "left" ? "chosen-word" : q.chosen === "none" ? "none-word" : ""}
+                  >
+                    {q.left}
+                  </strong>{" "}
+                  ou{" "}
+                  <strong
+                    className={q.chosen === "right" ? "chosen-word" : q.chosen === "none" ? "none-word" : ""}
+                  >
+                    {q.right}
+                  </strong>{" "}
+                  ?
+                </span>
+              </div>
+            ))}
+          </div>
             <div className="game1-panel">
               <h2>Ta réponse</h2>
               <div className="answer-form">
@@ -233,16 +285,52 @@ export default function TheOuCafe({
                 <div className="judge-question" key={q.id}>
                   <b>{player(q.authorId)}</b>
                   <p>
-                    Plutôt <strong>{q.left}</strong> ou{" "}<strong>{q.right}</strong> ?
+                    Plutôt <strong>{q.left}</strong> ou{" "}
+                    <strong>{q.right}</strong> ?
                   </p>
-                  <div>
-                    <button className={q.chosen === "left" ? "chosen" : ""} onClick={() => socket.emit("game1:choose", { questionId: q.id, side: "left" }, (r: any) => { if (r?.ok) socket.emit("game1:request-state", (state: any) => { if (state?.ok) setGame(state.snapshot); }); })}>
+                  <div className="judge-choice-buttons">
+                    <button
+                      className={q.chosen === "left" ? "chosen" : ""}
+                      onClick={() =>
+                        socket.emit(
+                          "game1:choose",
+                          { questionId: q.id, side: "left" },
+                          (r: any) => {
+                            if (r?.ok) setGame((current) => current ? { ...current, questions: current.questions.map((question) => question.id === q.id ? { ...question, chosen: "left" } : question) } : current);
+                          }
+                        )
+                      }
+                    >
                       {q.left}
                     </button>
-                    <button className={q.chosen === "right" ? "chosen" : ""} onClick={() => socket.emit("game1:choose", { questionId: q.id, side: "right" }, (r: any) => { if (r?.ok) socket.emit("game1:request-state", (state: any) => { if (state?.ok) setGame(state.snapshot); }); })}>
+
+                    <button
+                      className={q.chosen === "right" ? "chosen" : ""}
+                      onClick={() =>
+                        socket.emit(
+                          "game1:choose",
+                          { questionId: q.id, side: "right" },
+                          (r: any) => {
+                            if (r?.ok) setGame((current) => current ? { ...current, questions: current.questions.map((question) => question.id === q.id ? { ...question, chosen: "right" } : question) } : current);
+                          }
+                        )
+                      }
+                    >
                       {q.right}
                     </button>
-                    <button className={`choose-none ${q.chosen === "none" ? "chosen-none" : ""}`} onClick={() => socket.emit("game1:choose", { questionId: q.id, side: "none" }, (r: any) => { if (r?.ok) socket.emit("game1:request-state", (state: any) => { if (state?.ok) setGame(state.snapshot); }); })}>
+
+                    <button
+                      className={`none-choice ${q.chosen === "none" ? "chosen" : ""}`}
+                      onClick={() =>
+                        socket.emit(
+                          "game1:choose",
+                          { questionId: q.id, side: "none" },
+                          (r: any) => {
+                            if (r?.ok) setGame((current) => current ? { ...current, questions: current.questions.map((question) => question.id === q.id ? { ...question, chosen: "none" } : question) } : current);
+                          }
+                        )
+                      }
+                    >
                       Aucun
                     </button>
                   </div>
