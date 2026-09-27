@@ -5,7 +5,7 @@ export type TheOuCafeQuestion = {
   authorId: string;
   left: string;
   right: string;
-  chosen: "left" | "right" | null;
+  chosen: "left" | "right" | "none" | null;
   createdAt: number;
 };
 
@@ -19,9 +19,8 @@ export type TheOuCafeAnswer = {
 
 export type TheOuCafeSnapshot = {
   category: TheOuCafeCategory;
-  phase: "choosing" | "playing" | "finished";
+  phase: "playing" | "finished";
   targetPlayerId: string;
-  candidates: Array<{ id: number; name: string; imageUrl?: string | null }>;
   secret?: { id: number; name: string; imageUrl?: string | null; animeName?: string | null };
   questions: TheOuCafeQuestion[];
   answers: TheOuCafeAnswer[];
