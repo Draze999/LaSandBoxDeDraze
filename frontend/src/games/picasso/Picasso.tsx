@@ -66,7 +66,7 @@ export default function Picasso({ room, playerId, onExit }: Props) {
       }
     }, 160);
     return () => clearTimeout(timer);
-  }, [guess, game?.phase, game?.category, abandoned]);
+  }, [guess, game?.phase, game?.category]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 100);
