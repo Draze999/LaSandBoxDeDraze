@@ -389,12 +389,15 @@ export async function getCharacterGameData(id:number) {
  * @param {string} name
  * @returns {Array}
  */
-export async function searchCharacters(name: string) {
+export async function searchCharacters(name: string, limit = 50) {
   const search = String(name ?? "").trim();
 
   if (!search) {
     return [];
   }
+
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+  const escaped = search.replace(/[\%_]/g, (char) => `\\${char}`);
 
   const { data, error } = await supabase
 
@@ -412,13 +415,13 @@ export async function searchCharacters(name: string) {
     `,
     )
 
-    .ilike("name", `%${search}%`)
+    .ilike("name", `%${escaped}%`)
 
     .order("name", {
       ascending: true,
     })
 
-    .limit(50);
+    .limit(safeLimit);
 
   if (error) {
     throw error;

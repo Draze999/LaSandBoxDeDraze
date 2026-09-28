@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { socket } from "../../socket";
 import "./Picasso.css";
 
@@ -19,6 +19,10 @@ type Snapshot = {
   cumulativeScores: Record<string, number>;
   timeLimit: number;
 };
+type Suggestion = { id: number; name: string };
+
+const API_BASE = import.meta.env.DEV ? "http://localhost:3001" : "https://api.lasandboxdedraze.xyz";
+
 type Props = { room: Room; playerId: string; onExit: () => void };
 
 export default function Picasso({ room, playerId, onExit }: Props) {
@@ -26,6 +30,8 @@ export default function Picasso({ room, playerId, onExit }: Props) {
   const [guess, setGuess] = useState("");
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const searchAbort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const state = (snapshot: Snapshot) => setGame(snapshot);
@@ -37,6 +43,30 @@ export default function Picasso({ room, playerId, onExit }: Props) {
       socket.off("game7:state", state);
     };
   }, []);
+
+  useEffect(() => {
+    const query = guess.trim();
+    if (query.length < 2 || game?.phase !== "playing" || abandoned) {
+      setSuggestions([]);
+      searchAbort.current?.abort();
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      searchAbort.current?.abort();
+      const controller = new AbortController();
+      searchAbort.current = controller;
+      try {
+        const endpoint = game.category === "character" ? "/api/characters/search" : "/api/anime/search";
+        const response = await fetch(`${API_BASE}${endpoint}?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("SEARCH_FAILED");
+        const payload = await response.json() as { results?: Suggestion[] };
+        setSuggestions(payload.results ?? []);
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") setSuggestions([]);
+      }
+    }, 160);
+    return () => clearTimeout(timer);
+  }, [guess, game?.phase, game?.category, abandoned]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 100);
@@ -85,8 +115,11 @@ export default function Picasso({ room, playerId, onExit }: Props) {
         </div>
 
         {game.phase === "playing" ? (
-          <div className="game7-form">
-            <input value={guess} onChange={e => setGuess(e.target.value)} onKeyDown={e => { if(e.key === "Enter") submit(); }} placeholder="Nom de l'animé ou du personnage…" maxLength={160} disabled={abandoned} />
+          <div className="game7-form autocomplete-field">
+            <div className="autocomplete-input-wrap">
+              <input value={guess} onChange={e => setGuess(e.target.value)} onKeyDown={e => { if(e.key === "Enter") submit(); if (e.key === "Escape") setSuggestions([]); }} placeholder={game.category === "anime" ? "Nom de l'animé…" : "Nom du personnage…"} maxLength={160} disabled={abandoned} />
+              {suggestions.length > 0 && <div className="autocomplete-suggestions">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setSuggestions([]); }}>{suggestion.name}</button>)}</div>}
+            </div>
             <button className="primary purple" onClick={submit} disabled={abandoned}>{abandoned ? "Tu as abandonné" : "Répondre →"}</button>
             {!abandoned && <button className="game7-abandon" onClick={abandon}>J'abandonne</button>}
           </div>

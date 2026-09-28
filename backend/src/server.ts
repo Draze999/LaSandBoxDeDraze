@@ -31,7 +31,7 @@ import { PicassoEngine } from "./games/picasso/engine.js";
 import type { PicassoCategory } from "./games/picasso/types.js";
 import { ALaSuiteEngine } from "./games/a-la-suite/engine.js";
 import { SynopsisEclataxEngine } from "./games/synopsis-eclatax/engine.js";
-import { searchAnime } from "./database/anime.js";
+import { searchAnime, searchCharacters } from "./database/anime.js";
 
 const app = Fastify({ logger: true });
 const PORT = Number(process.env.PORT ?? 3001);
@@ -215,6 +215,19 @@ app.get("/api/anime/search", async (req, reply) => {
 
   try {
     const results = await searchAnime(parsed.data.q, 8);
+    return { results };
+  } catch (error) {
+    app.log.error(error);
+    return reply.code(500).send({ error: "SEARCH_FAILED" });
+  }
+});
+
+app.get("/api/characters/search", async (req, reply) => {
+  const parsed = z.object({ q: z.string().trim().min(1).max(80) }).safeParse(req.query);
+  if (!parsed.success) return reply.code(400).send({ error: "INVALID_QUERY" });
+
+  try {
+    const results = await searchCharacters(parsed.data.q, 8);
     return { results };
   } catch (error) {
     app.log.error(error);

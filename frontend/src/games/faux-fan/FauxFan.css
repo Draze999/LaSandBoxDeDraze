@@ -2,3 +2,9 @@
 
 .game2-result-secret{display:flex;align-items:center;gap:14px;margin:18px 0;padding:12px 16px;border:1px solid #2b3544;border-radius:14px;background:#111722}.game2-result-secret img{width:58px;height:76px;object-fit:cover;border-radius:9px;background:#202735}.game2-result-secret div{display:flex;flex-direction:column;gap:3px}.game2-result-secret small{color:#7f8b9e;text-transform:uppercase;font-size:9px}.game2-result-secret strong{color:#e5e9f1}.game2-result-secret span{color:#929db0;font-size:11px}.game2-rank.intruder i{box-shadow:0 0 14px rgba(255,139,64,.7),0 0 4px rgba(255,139,64,.9)}.game2-rank.innocent i{box-shadow:0 0 14px rgba(64,220,140,.55),0 0 4px rgba(64,220,140,.7)}
 .game2-secret{display:flex;align-items:center;gap:10px}.game2-secret img{width:50px;height:66px;object-fit:cover;border-radius:8px;background:#202735}.game2-secret>div{display:flex;flex-direction:column;gap:3px}.game2-secret span{color:#91bda9;font-size:11px}
+
+.autocomplete-input-wrap{position:relative;flex:1 1 300px;min-width:0}
+.autocomplete-input-wrap input{width:100%;box-sizing:border-box}
+.autocomplete-suggestions{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 6px);display:grid;gap:4px;padding:6px;background:#10151f;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 16px 35px rgba(0,0,0,.35);max-height:240px;overflow:auto}
+.autocomplete-suggestions button{display:block;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#e8ebf2;text-align:left;cursor:pointer;font:inherit}
+.autocomplete-suggestions button:hover{background:rgba(255,255,255,.08)}

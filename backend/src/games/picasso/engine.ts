@@ -1,7 +1,11 @@
 import sharp from "sharp";
 import { getRandomAnime, getRandomCharacter } from "../../database/anime.js";
 import { randomInt } from "node:crypto";
-import { PICASSO_FILTERS } from "./filters/index.js";
+import {
+  PICASSO_COLOR_FILTERS,
+  PICASSO_SHAPE_FILTERS,
+  PICASSO_MOVEMENT_FILTERS,
+} from "./filters/index.js";
 import type { PicassoCategory, PicassoSnapshot } from "./types.js";
 
 type State = {
@@ -47,7 +51,7 @@ export class PicassoEngine {
     if (!row?.name || !row?.image_url) return { ok: false as const, error: "NO_CONTENT" };
 
     const originalImage = await fetchImage(String(row.image_url));
-    const selected = chooseFilters(3);
+    const selected = chooseFiltersByCategory();
 
     console.log(
       `[PICASSO][${roomCode}] Filtres sélectionnés : ${selected.map((filter) => `${filter.id} (${filter.name})`).join(" | ")}`
@@ -231,12 +235,19 @@ function normalize(value: string) {
   return value.trim().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 }
 
-function chooseFilters(count: number) {
-  const pool = [...PICASSO_FILTERS];
-  const chosen = [];
-  for (let i = 0; i < Math.min(count, pool.length); i++) {
-    const index = randomInt(pool.length);
-    chosen.push(pool.splice(index, 1)[0]);
+function chooseFiltersByCategory() {
+  // Toujours exactement 3 filtres, dans cet ordre :
+  // couleur -> forme/texture -> mouvement.
+  return [
+    pickRandomFilter(PICASSO_COLOR_FILTERS),
+    pickRandomFilter(PICASSO_SHAPE_FILTERS),
+    pickRandomFilter(PICASSO_MOVEMENT_FILTERS),
+  ];
+}
+
+function pickRandomFilter<T>(filters: readonly T[]) {
+  if (filters.length === 0) {
+    throw new Error("Une catégorie de filtres Picasso est vide.");
   }
-  return chosen;
+  return filters[randomInt(filters.length)];
 }

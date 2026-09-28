@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { socket } from "../../socket";
 import "./TheOuCafe.css";
 
@@ -11,6 +11,10 @@ type Question = {
   right: string;
   chosen: "left" | "right" | "none" | null;
 };
+type Suggestion = { id: number; name: string };
+
+const API_BASE = import.meta.env.DEV ? "http://localhost:3001" : "https://api.lasandboxdedraze.xyz";
+
 type Answer = {
   id: string;
   authorId: string;
@@ -50,9 +54,35 @@ export default function TheOuCafe({
   const [left, setLeft] = useState("");
   const [right, setRight] = useState("");
   const [answer, setAnswer] = useState("");
+  const [answerSuggestions, setAnswerSuggestions] = useState<Suggestion[]>([]);
+  const answerSearchAbort = useRef<AbortController | null>(null);
   const isTarget = game?.targetPlayerId === playerId;
   const player = (id: string) =>
     room.players.find((p) => p.id === id)?.pseudo ?? "Joueur";
+
+  useEffect(() => {
+    const query = answer.trim();
+    if (query.length < 2 || !game || game.phase !== "playing" || isTarget) {
+      setAnswerSuggestions([]);
+      answerSearchAbort.current?.abort();
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      answerSearchAbort.current?.abort();
+      const controller = new AbortController();
+      answerSearchAbort.current = controller;
+      try {
+        const endpoint = game.category === "character" ? "/api/characters/search" : "/api/anime/search";
+        const response = await fetch(`${API_BASE}${endpoint}?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("SEARCH_FAILED");
+        const payload = await response.json() as { results?: Suggestion[] };
+        setAnswerSuggestions(payload.results ?? []);
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") setAnswerSuggestions([]);
+      }
+    }, 160);
+    return () => clearTimeout(timer);
+  }, [answer, game?.phase, game?.category, isTarget]);
 
   useEffect(() => {
     const start = (s: Snapshot) => setGame(s);
@@ -251,12 +281,24 @@ export default function TheOuCafe({
           </div>
             <div className="game1-panel">
               <h2>Ta réponse</h2>
-              <div className="answer-form">
-                <input
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Qui/quoi est l'élément secret ?"
-                />
+              <div className="answer-form autocomplete-field">
+                <div className="autocomplete-input-wrap">
+                  <input
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Escape") setAnswerSuggestions([]); }}
+                    placeholder="Qui/quoi est l'élément secret ?"
+                  />
+                  {answerSuggestions.length > 0 && (
+                    <div className="autocomplete-suggestions">
+                      {answerSuggestions.map((suggestion) => (
+                        <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setAnswer(suggestion.name); setAnswerSuggestions([]); }}>
+                          {suggestion.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button className="primary blue" onClick={sendAnswer}>
                   Répondre
                 </button>

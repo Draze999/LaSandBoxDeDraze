@@ -28,5 +28,70 @@ import { filter as blocks } from "./blocks.js";
 import { filter as chromatic } from "./chromatic.js";
 import { filter as ink } from "./ink.js";
 import { filter as low_poly } from "./low-poly.js";
+import { filter as glass_warp } from "./glass-warp.js";
+import { filter as rotate_chaos } from "./rotate-chaos.js";
+import { filter as shear } from "./shear.js";
 
-export const PICASSO_FILTERS = [negative, acid_hue, psychedelic, posterize, pixel_mosaic, blur_storm, edge_crush, color_shock, flip_flop, comic, sepia_inferno, channel_split, contrast_collapse, median_melt, vivid_invert, hexagons, picasso, neon_ghost, whirl, toon, color_lines, scanlines, kaleidoscope, wave, liquid, blocks, chromatic, ink, low_poly];
+/**
+ * Picasso est construit en 3 familles.
+ *
+ * 1. Couleur : transforme principalement la palette, la saturation,
+ *    le contraste ou les canaux.
+ * 2. Forme / texture : transforme le rendu, les contours, la matière
+ *    ou ajoute une structure visuelle.
+ * 3. Mouvement : déforme fortement la géométrie ou donne une impression
+ *    de déplacement / torsion de l'image.
+ *
+ * L'ordre de ces tableaux est volontaire : le moteur choisit exactement
+ * un filtre dans chaque famille, puis les applique dans cet ordre.
+ */
+export const PICASSO_COLOR_FILTERS = [
+  negative,
+  acid_hue,
+  psychedelic,
+  color_shock,
+  sepia_inferno,
+  channel_split,
+  contrast_collapse,
+  vivid_invert,
+  neon_ghost,
+  color_lines,
+  scanlines,
+  posterize,
+];
+
+export const PICASSO_SHAPE_FILTERS = [
+  pixel_mosaic,
+  blur_storm,
+  edge_crush,
+  median_melt,
+  hexagons,
+  picasso,
+  comic,
+  toon,
+  ink,
+  low_poly,
+  blocks,
+];
+
+export const PICASSO_MOVEMENT_FILTERS = [
+  flip_flop,
+  whirl,
+  kaleidoscope,
+  wave,
+  liquid,
+  chromatic,
+  glass_warp,
+  rotate_chaos,
+  shear,
+];
+
+/**
+ * Conservé pour les éventuels imports externes.
+ * Le moteur de Picasso utilise désormais les catégories ci-dessus.
+ */
+export const PICASSO_FILTERS = [
+  ...PICASSO_COLOR_FILTERS,
+  ...PICASSO_SHAPE_FILTERS,
+  ...PICASSO_MOVEMENT_FILTERS,
+];

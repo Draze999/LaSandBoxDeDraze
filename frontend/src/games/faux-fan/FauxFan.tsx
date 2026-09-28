@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { socket } from "../../socket";
 import "./FauxFan.css";
 
@@ -25,6 +25,10 @@ type Snapshot = {
   result: { intruderWon: boolean; intruderVotedMajority: boolean; correctGuess: boolean | null } | null;
 };
 
+type Suggestion = { id: number; name: string };
+
+const API_BASE = import.meta.env.DEV ? "http://localhost:3001" : "https://api.lasandboxdedraze.xyz";
+
 type Props = { room: Room; playerId: string; onExit: () => void };
 
 const errorText: Record<string, string> = {
@@ -49,6 +53,8 @@ export default function FauxFan({ room, playerId, onExit }: Props) {
   const [answer, setAnswer] = useState("");
   const [guess, setGuess] = useState("");
   const [error, setError] = useState("");
+  const [guessSuggestions, setGuessSuggestions] = useState<Suggestion[]>([]);
+  const guessSearchAbort = useRef<AbortController | null>(null);
 
   const player = (id: string) => room.players.find((p) => p.id === id)?.pseudo ?? "Joueur";
   const others = room.players.filter((p) => p.id !== playerId);
@@ -57,6 +63,30 @@ export default function FauxFan({ room, playerId, onExit }: Props) {
     : null;
   const myCount = game?.questionCounts[playerId] ?? 0;
   const isMyTurn = game?.phase === "questioning" && game.turnPlayerId === playerId && !game.waitingForAnswerId;
+
+  useEffect(() => {
+    const query = guess.trim();
+    if (query.length < 2 || game?.phase !== "guessing" || !game?.isIntruder) {
+      setGuessSuggestions([]);
+      guessSearchAbort.current?.abort();
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      guessSearchAbort.current?.abort();
+      const controller = new AbortController();
+      guessSearchAbort.current = controller;
+      try {
+        const endpoint = game.category === "character" ? "/api/characters/search" : "/api/anime/search";
+        const response = await fetch(`${API_BASE}${endpoint}?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("SEARCH_FAILED");
+        const payload = await response.json() as { results?: Suggestion[] };
+        setGuessSuggestions(payload.results ?? []);
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") setGuessSuggestions([]);
+      }
+    }, 160);
+    return () => clearTimeout(timer);
+  }, [guess, game?.phase, game?.category, game?.isIntruder]);
 
   useEffect(() => {
     const onStart = (snapshot: Snapshot) => { setGame(snapshot); setError(""); setQuestion(""); setAnswer(""); setGuess(""); };
@@ -206,7 +236,7 @@ export default function FauxFan({ room, playerId, onExit }: Props) {
 
       {game.phase === "guessing" && <div className="game2-phase-layout">
         <div className="game2-phase">
-        {game.isIntruder ? <><p className="game2-instruction">Tu as été désigné comme intrus. Tente maintenant de retrouver le secret.</p>{!game.guess ? <div className="game2-guess-form"><input value={guess} onChange={(e) => setGuess(e.target.value)} placeholder={game.category === "anime" ? "Nom de l'animé…" : "Nom du personnage…"} maxLength={120} /><button className="primary purple" onClick={submitGuess}>Proposer <span>→</span></button></div> : <div className="game2-guess-submitted">Ta proposition : <strong>{game.guess}</strong><span>Les autres joueurs doivent maintenant voter.</span></div>}</> : <><p className="game2-instruction">L'intrus propose une réponse. Accepte-la si tu penses qu'elle correspond au secret.</p>{game.guess ? <div className="game2-guess-card"><strong>{game.guess}</strong><div><button className="primary green" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(true)}>✓ Correct</button><button className="primary red" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(false)}>✕ Incorrect</button></div><small>{game.guessVotes.length}/{room.players.length - 1} votes</small></div> : <div className="game2-wait">L'intrus réfléchit à sa réponse…</div>}</>}
+        {game.isIntruder ? <><p className="game2-instruction">Tu as été désigné comme intrus. Tente maintenant de retrouver le secret.</p>{!game.guess ? <div className="game2-guess-form autocomplete-field"><div className="autocomplete-input-wrap"><input value={guess} onChange={(e) => setGuess(e.target.value)} placeholder={game.category === "anime" ? "Nom de l'animé…" : "Nom du personnage…"} maxLength={120} onKeyDown={(e) => { if (e.key === "Escape") setGuessSuggestions([]); }} />{guessSuggestions.length > 0 && <div className="autocomplete-suggestions">{guessSuggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setGuessSuggestions([]); }}>{suggestion.name}</button>)}</div>}</div><button className="primary purple" onClick={submitGuess}>Proposer <span>→</span></button></div> : <div className="game2-guess-submitted">Ta proposition : <strong>{game.guess}</strong><span>Les autres joueurs doivent maintenant voter.</span></div>}</> : <><p className="game2-instruction">L'intrus propose une réponse. Accepte-la si tu penses qu'elle correspond au secret.</p>{game.guess ? <div className="game2-guess-card"><strong>{game.guess}</strong><div><button className="primary green" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(true)}>✓ Correct</button><button className="primary red" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(false)}>✕ Incorrect</button></div><small>{game.guessVotes.length}/{room.players.length - 1} votes</small></div> : <div className="game2-wait">L'intrus réfléchit à sa réponse…</div>}</>}
         </div>
         {historyPanel}
       </div>}
