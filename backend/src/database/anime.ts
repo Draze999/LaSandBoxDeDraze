@@ -19,6 +19,8 @@ export async function getAnime(id: number) {
       `
       id,
       name,
+      alt_name,
+      season,
       image_url,
       image_small_url,
       created_at,
@@ -61,6 +63,8 @@ export async function getAnimeByMalId(malId:number) {
       anime:anime_id (
         id,
         name,
+        alt_name,
+        season,
         image_url,
         image_small_url,
         created_at,
@@ -94,6 +98,8 @@ export async function getAllAnime() {
       `
       id,
       name,
+      alt_name,
+      season,
       image_url,
       image_small_url,
       created_at,
@@ -240,6 +246,8 @@ export async function getCharactersByAnime(animeId: number) {
       mal_favorites,
       anime_id,
       anime_name,
+      anime_alt_name,
+      anime_season,
       anime_image_url,
       anime_image_small_url
     `,
@@ -365,6 +373,8 @@ export async function getCharacterGameData(id:number) {
       role,
       anime_id,
       anime_name,
+      anime_alt_name,
+      anime_season,
       anime_image_url,
       anime_image_small_url
     `)
@@ -453,6 +463,8 @@ export async function searchAnime(name: string, limit = 50) {
       `
       id,
       name,
+      alt_name,
+      season,
       image_url,
       image_small_url
     `,

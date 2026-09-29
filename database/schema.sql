@@ -16,6 +16,12 @@ create table if not exists public.anime (
   -- Nom utilisé par TON application
   name text not null,
 
+  -- Noms alternatifs (romaji, français, etc.)
+  alt_name text[] not null default '{}',
+
+  -- Saison de début de diffusion
+  season text not null,
+
   -- Image principale de l'anime
   image_url text,
 
@@ -27,6 +33,23 @@ create table if not exists public.anime (
 
   constraint anime_name_unique unique (name)
 );
+
+-- Migration si la table anime existe déjà
+alter table public.anime
+  add column if not exists alt_name text[] not null default '{}';
+
+alter table public.anime
+  add column if not exists season text;
+
+-- Les lignes déjà présentes doivent recevoir une valeur avant de rendre
+-- la colonne season obligatoire. Le script d'import les mettra ensuite
+-- à jour avec la vraie saison issue de anime-list.js.
+update public.anime
+set season = 'Unknown'
+where season is null;
+
+alter table public.anime
+  alter column season set not null;
 
 
 -- =========================================================
@@ -225,6 +248,8 @@ select
 
   a.id as anime_id,
   a.name as anime_name,
+  a.alt_name as anime_alt_name,
+  a.season as anime_season,
   a.image_url as anime_image_url,
   a.image_small_url as anime_image_small_url
 
