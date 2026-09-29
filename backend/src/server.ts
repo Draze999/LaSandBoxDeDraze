@@ -31,6 +31,7 @@ import { PicassoEngine } from "./games/picasso/engine.js";
 import type { PicassoCategory } from "./games/picasso/types.js";
 import { ALaSuiteEngine } from "./games/a-la-suite/engine.js";
 import { SynopsisEclataxEngine } from "./games/synopsis-eclatax/engine.js";
+import { ChronologieEngine } from "./games/chronologie/engine.js";
 import { searchAnime, searchCharacters } from "./database/anime.js";
 
 const app = Fastify({ logger: true });
@@ -55,11 +56,13 @@ const io = new SocketIOServer(app.server, {
 });
 
 const pseudo = z.string().trim().min(1).max(20);
-const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5", "game-6", "game-7", "game-8", "game-9"]);
+const game = z.enum(["game-1", "game-2", "game-3", "game-4", "game-5", "game-6", "game-7", "game-8", "game-9", "game-10"]);
 const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{5}$/);
 const timeLimit = z.number().int().min(20).max(240).refine((value) => value % 5 === 0);
 const tierlistTimeLimit = z.number().int().min(120).max(1200).refine((value) => value % 30 === 0);
 const scrambledEggsTimeLimit = z.number().int().min(30).max(301);
+const chronologieTimeLimit = z.number().int().min(30).max(60);
+const chronologieItemCount = z.number().int().min(5).max(12);
 
 const gameSettingsSchema = z.object({
   timeLimit: timeLimit.default(60),
@@ -76,6 +79,8 @@ const gameSettingsSchema = z.object({
   picassoRounds: z.number().int().min(1).max(10).default(1),
   aLaSuiteTimeLimit: z.number().int().min(10).max(150).default(60),
   synopsisEclataxRounds: z.number().int().min(1).max(10).default(1),
+  chronologieTimeLimit: chronologieTimeLimit.default(45),
+  chronologieItemCount: chronologieItemCount.default(8),
 });
 
 const gameSettingsUpdateSchema = z.object({
@@ -93,6 +98,8 @@ const gameSettingsUpdateSchema = z.object({
   picassoRounds: z.number().int().min(1).max(10).optional(),
   aLaSuiteTimeLimit: z.number().int().min(10).max(150).optional(),
   synopsisEclataxRounds: z.number().int().min(1).max(10).optional(),
+  chronologieTimeLimit: chronologieTimeLimit.optional(),
+  chronologieItemCount: chronologieItemCount.optional(),
 });
 
 const createSchema = z.object({
@@ -107,7 +114,7 @@ const createSchema = z.object({
     name: "Ma partie",
     maxPlayers: 8,
     private: true,
-    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1 },
+    gameSettings: { timeLimit: 60, theOuCafeCategory: "anime", fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1, chronologieTimeLimit: 45, chronologieItemCount: 8 },
   }),
 });
 
@@ -207,6 +214,16 @@ const synopsisEclatax = new SynopsisEclataxEngine((roomCode) => {
   }
 });
 
+const chronologie = new ChronologieEngine((roomCode) => {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  for (const player of room.players.values()) {
+    if (!player.socketId) continue;
+    const snapshot = chronologie.snapshot(roomCode, player.id);
+    if (snapshot) io.to(player.socketId).emit("game10:state", snapshot);
+  }
+});
+
 app.get("/health", async () => ({ ok: true, service: "roomhub-backend" }));
 
 app.get("/api/anime/search", async (req, reply) => {
@@ -255,6 +272,7 @@ function clearGame(roomCode: string) {
   picasso.clear(roomCode);
   aLaSuite.clear(roomCode);
   synopsisEclatax.clear(roomCode);
+  chronologie.clear(roomCode);
 }
 
 function isGameStarted(roomCode: string, gameId: GameId) {
@@ -274,6 +292,7 @@ function isGameStarted(roomCode: string, gameId: GameId) {
 
   if (gameId === "game-8") return !!aLaSuite.get(roomCode);
   if (gameId === "game-9") return !!synopsisEclatax.get(roomCode);
+  if (gameId === "game-10") return !!chronologie.get(roomCode);
 
   // RorschachEngine does not expose a `get()` method. Its public state
   // accessor is `snapshot(roomCode, playerId)`, so use the first player
@@ -423,6 +442,7 @@ io.on("connection", (socket) => {
     picasso.removePlayer(roomCode, playerId);
     aLaSuite.removePlayer(roomCode, playerId);
     synopsisEclatax.removePlayer(roomCode, playerId);
+    chronologie.removePlayer(roomCode, playerId);
 
     if (result.room.players.size > 0) {
       io.to(roomCode).emit("room:updated", serializeRoom(result.room));
@@ -579,6 +599,18 @@ io.on("connection", (socket) => {
       for (const player of room.players.values()) {
         const snapshot = synopsisEclatax.snapshot(room.code, player.id);
         if (snapshot && player.socketId) io.to(player.socketId).emit("game9:start", snapshot);
+      }
+      return cb?.({ ok: true });
+    }
+
+    if (room.gameId === "game-10") {
+      const duration = room.settings.gameSettings?.chronologieTimeLimit ?? 45;
+      const itemCount = room.settings.gameSettings?.chronologieItemCount ?? 8;
+      const result = await chronologie.start(room.code, [...room.players.keys()], duration, itemCount);
+      if (!result.ok) return cb?.(result);
+      for (const player of room.players.values()) {
+        const snapshot = chronologie.snapshot(room.code, player.id);
+        if (snapshot && player.socketId) io.to(player.socketId).emit("game10:start", snapshot);
       }
       return cb?.({ ok: true });
     }
@@ -785,6 +817,17 @@ io.on("connection", (socket) => {
     const parsed = z.object({ guessId: z.string(), accepted: z.boolean() }).safeParse(payload);
     if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
     cb?.(rorschach.judge(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.guessId, parsed.data.accepted));
+  });
+
+  socket.on("game10:request-state", (cb) => {
+    const snapshot = chronologie.snapshot(socket.data.roomCode ?? "", socket.data.playerId ?? "");
+    cb?.(snapshot ? { ok: true, snapshot } : { ok: false, error: "NOT_STARTED" });
+  });
+
+  socket.on("game10:reorder", (payload, cb) => {
+    const parsed = z.object({ order: z.array(z.number().int()) }).safeParse(payload);
+    if (!parsed.success) return cb?.({ ok: false, error: "INVALID_DATA" });
+    cb?.(chronologie.reorder(socket.data.roomCode ?? "", socket.data.playerId ?? "", parsed.data.order));
   });
 
   socket.on("game3:request-state", (cb) => {

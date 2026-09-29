@@ -9,6 +9,7 @@ import ScrambledEggs from "./games/scrambled-eggs/ScrambledEggs";
 import Picasso from "./games/picasso/Picasso";
 import ALaSuite from "./games/a-la-suite/ALaSuite";
 import SynopsisEclatax from "./games/synopsis-eclatax/SynopsisEclatax";
+import Chronologie from "./games/chronologie/Chronologie";
 
 type Game = {
   id: string;
@@ -22,7 +23,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number; scrambledEggsRounds?: number; picassoRounds?: number; aLaSuiteTimeLimit?: number; synopsisEclataxRounds?: number } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number; scrambledEggsRounds?: number; picassoRounds?: number; aLaSuiteTimeLimit?: number; synopsisEclataxRounds?: number; chronologieTimeLimit?: number; chronologieItemCount?: number } };
   players: Player[];
 };
 
@@ -93,6 +94,13 @@ const games: Game[] = [
     color: "#d06b58",
     icon: "🤡",
   },
+  {
+    id: "game-10",
+    name: "Chronologie",
+    description: "Remets les animés dans l'ordre de sortie.",
+    color: "#4f9cba",
+    icon: "⏳",
+  },
 ];
 
 function startErrorMessage(error: string) {
@@ -102,6 +110,7 @@ function startErrorMessage(error: string) {
     NO_CONTENT: "Aucun animé disponible dans la base de données.",
     NOT_ENOUGH_PLAYERS: "Il faut au moins 2 joueurs.",
     START_IN_PROGRESS: "La partie est déjà en cours de préparation.",
+    NOT_ENOUGH_ANIME: "Pas assez d'animés avec une saison de sortie distincte.",
   };
   return messages[error] ?? "Impossible de lancer la partie.";
 }
@@ -195,6 +204,7 @@ export default function App() {
     const startGame7 = () => { setStarted(true); setStartingGame(false); };
     const startGame8 = () => { setStarted(true); setStartingGame(false); };
     const startGame9 = () => { setStarted(true); setStartingGame(false); };
+    const startGame10 = () => { setStarted(true); setStartingGame(false); };
 
     const restore = () => {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -234,6 +244,7 @@ export default function App() {
     socket.on("game7:start", startGame7);
     socket.on("game8:start", startGame8);
     socket.on("game9:start", startGame9);
+    socket.on("game10:start", startGame10);
 
     if (socket.connected) restore();
     else if (localStorage.getItem(SESSION_KEY)) socket.connect();
@@ -251,6 +262,7 @@ export default function App() {
       socket.off("game7:start", startGame7);
       socket.off("game8:start", startGame8);
       socket.off("game9:start", startGame9);
+      socket.off("game10:start", startGame10);
     };
   }, []);
   const connect = () => {
@@ -266,7 +278,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1 } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1, chronologieTimeLimit: 45, chronologieItemCount: 8 } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -451,6 +463,17 @@ export default function App() {
           <span className="status"><i /> Partie en cours</span>
         </header>
         <SynopsisEclatax room={room} playerId={playerId} onExit={() => setStarted(false)} />
+      </main></div>
+    );
+
+  if (room && room.gameId === "game-10" && started)
+    return (
+      <div className="app"><Background /><main className="room-page">
+        <header className="topbar">
+          <button className="brand" onClick={() => setStarted(false)}><span className="brand-mark">A</span> L'Atelier de Draze</button>
+          <span className="status"><i /> Partie en cours</span>
+        </header>
+        <Chronologie room={room} playerId={playerId} onExit={() => setStarted(false)} />
       </main></div>
     );
 
@@ -711,6 +734,28 @@ export default function App() {
                       style={{ width: "100%" }}
                     />
                   </label>
+                )}
+                {room.gameId === "game-10" && (
+                  <>
+                    <label>
+                      Temps : <strong>{room.settings.gameSettings?.chronologieTimeLimit ?? 45}s</strong>
+                      <input type="range" min={30} max={60} step={5}
+                        value={room.settings.gameSettings?.chronologieTimeLimit ?? 45}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { chronologieTimeLimit: Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
+                    <label>
+                      Nombre d'animés : <strong>{room.settings.gameSettings?.chronologieItemCount ?? 8}</strong>
+                      <input type="range" min={5} max={12} step={1}
+                        value={room.settings.gameSettings?.chronologieItemCount ?? 8}
+                        disabled={room.hostId !== playerId}
+                        onChange={(e) => update({ gameSettings: { chronologieItemCount: Number(e.target.value) } })}
+                        style={{ width: "100%" }}
+                      />
+                    </label>
+                  </>
                 )}
                 {room.gameId === "game-3" && (
                   <label>

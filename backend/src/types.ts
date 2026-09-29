@@ -1,4 +1,4 @@
-export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5" | "game-6" | "game-7" | "game-8" | "game-9";
+export type GameId = "game-1" | "game-2" | "game-3" | "game-4" | "game-5" | "game-6" | "game-7" | "game-8" | "game-9" | "game-10";
 
 export type Player = {
   id: string;
@@ -29,6 +29,8 @@ export type RoomSettings = {
     picassoRounds?: number;
     aLaSuiteTimeLimit?: number;
     synopsisEclataxRounds?: number;
+    chronologieTimeLimit?: number;
+    chronologieItemCount?: number;
   };
 };
 
