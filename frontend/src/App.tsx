@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, type CSSProperties } from "react";
 import { socket } from "./socket";
 import PetitBac from "./games/petit-bac/PetitBac";
 import TheOuCafe from "./games/the-ou-cafe/TheOuCafe";
@@ -466,9 +466,14 @@ export default function App() {
       </main></div>
     );
 
-  if (room && room.gameId === "game-10" && started)
+  if (room && room.gameId === "game-10" && started) {
+    const chronologieCount = room.settings.gameSettings?.chronologieItemCount ?? 5;
+    const chronoRoomStyle = {
+      "--chrono-room-width": `min(92vw, ${chronologieCount * 190 + 80}px)`,
+    } as CSSProperties;
+
     return (
-      <div className="app"><Background /><main className="room-page">
+      <div className="app"><Background /><main className="room-page chronologie-room-page" style={chronoRoomStyle}>
         <header className="topbar">
           <button className="brand" onClick={() => setStarted(false)}><span className="brand-mark">A</span> L'Atelier de Draze</button>
           <span className="status"><i /> Partie en cours</span>
@@ -476,6 +481,7 @@ export default function App() {
         <Chronologie room={room} playerId={playerId} onExit={() => setStarted(false)} />
       </main></div>
     );
+  }
 
   if (room && room.gameId === "game-3" && started)
     return (
