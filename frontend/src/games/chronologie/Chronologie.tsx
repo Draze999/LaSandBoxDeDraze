@@ -77,7 +77,7 @@ export default function Chronologie({ room, playerId, onExit }: Props) {
     <header className="chrono-header"><div><p className="eyebrow">Chronologie · Résultats</p><h1>La vraie chronologie</h1><p className="chrono-subtitle">Les propositions sont comparées une par une. Les séparations vertes sont correctes, les rouges sont incorrectes.</p></div></header>
     <section className="chrono-correction">
       <h2>Ordre réel</h2>
-      <div className="chrono-result-list">{trueOrder.map((id, i) => <ResultCard key={id} anime={byId.get(id)!} last={i === trueOrder.length - 1} valid={true} />)}</div>
+      <div className="chrono-result-list">{trueOrder.map((id, i) => <ResultCard key={id} anime={byId.get(id)!} last={i === trueOrder.length - 1} valid={true} showSeason />)}</div>
     </section>
     <section className="chrono-proposals">
       <h2>Propositions des joueurs</h2>
@@ -93,7 +93,7 @@ export default function Chronologie({ room, playerId, onExit }: Props) {
         </div>)}
       </div>
     </section>
-    <button className="primary" onClick={onExit}>Retour au lobby</button>
+    <button className="primary chrono-return-button" onClick={onExit}>Retour au lobby</button>
   </section></main>;
 }
 
@@ -107,6 +107,6 @@ function compare(a: Anime, b: Anime) {
   return parse(a.season) < parse(b.season);
 }
 
-function ResultCard({ anime, last, valid }: { anime: Anime; last: boolean; valid: boolean }) {
-  return <div className="chrono-result-wrap"><article className="chrono-card result">{anime.image_small_url || anime.image_url ? <img src={anime.image_small_url || anime.image_url || ""} alt="" /> : <div className="chrono-no-image" />}<div><strong>{anime.name}</strong><span>{anime.season}</span></div></article>{!last && <div className={`chrono-separator ${valid ? "valid" : "invalid"}`}><span /></div>}</div>;
+function ResultCard({ anime, last, valid, showSeason = false }: { anime: Anime; last: boolean; valid: boolean; showSeason?: boolean }) {
+  return <div className="chrono-result-wrap"><article className="chrono-card result">{anime.image_small_url || anime.image_url ? <img src={anime.image_small_url || anime.image_url || ""} alt="" /> : <div className="chrono-no-image" />}<div><strong>{anime.name}</strong>{showSeason && <span>{anime.season}</span>}</div></article>{!last && <div className={`chrono-separator ${valid ? "valid" : "invalid"}`}><span /></div>}</div>;
 }
