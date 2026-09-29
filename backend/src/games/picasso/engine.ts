@@ -11,6 +11,7 @@ import type { PicassoCategory, PicassoSnapshot } from "./types.js";
 type State = {
   category: PicassoCategory;
   original: string;
+  acceptedAnswers: string[];
   imageDataUrl: string;
   phase: "playing" | "between" | "finished";
   endsAt: number | null;
@@ -82,6 +83,9 @@ export class PicassoEngine {
     this.states.set(roomCode, {
       category,
       original: String(row.name),
+      acceptedAnswers: category === "anime"
+        ? [String(row.name), ...(Array.isArray((row as any).alt_name) ? (row as any).alt_name : [])]
+        : [String(row.name)],
       imageDataUrl: `data:image/webp;base64,${output.toString("base64")}`,
       phase: "playing",
       endsAt,
@@ -144,7 +148,7 @@ export class PicassoEngine {
     }
     const guess = text.trim();
     if (!guess) return { ok: false as const, error: "EMPTY_GUESS" };
-    if (normalize(guess) === normalize(state.original)) {
+    if (state.acceptedAnswers.some((answer) => normalize(guess) === normalize(answer))) {
       state.winnerId = playerId;
       state.winnerScore = 1;
       const scores = this.cumulative.get(code) ?? Object.fromEntries([...state.playerIds].map((id: string) => [id, 0]));

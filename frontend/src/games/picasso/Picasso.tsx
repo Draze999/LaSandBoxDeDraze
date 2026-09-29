@@ -19,7 +19,7 @@ type Snapshot = {
   cumulativeScores: Record<string, number>;
   timeLimit: number;
 };
-type Suggestion = { id: number; name: string };
+type Suggestion = { id: number; name: string; alt_name?: string[] };
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3001" : "https://api.lasandboxdedraze.xyz";
 

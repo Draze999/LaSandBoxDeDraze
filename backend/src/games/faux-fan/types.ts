@@ -29,6 +29,7 @@ export type FauxFanState = {
     name: string;
     imageUrl?: string | null;
     animeName?: string | null;
+    season?: string | null;
   };
   phase: FauxFanPhase;
   questions: FauxFanQuestion[];
@@ -58,7 +59,7 @@ export type FauxFanSnapshot = {
   category: FauxFanCategory;
   phase: FauxFanPhase;
   isIntruder: boolean;
-  secret: { name: string; imageUrl?: string | null; animeName?: string | null } | null;
+  secret: { name: string; imageUrl?: string | null; animeName?: string | null; season?: string | null } | null;
   intruderId: string | null;
   questions: FauxFanQuestion[];
   questionCounts: Record<string, number>;

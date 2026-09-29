@@ -5,3 +5,5 @@
 .autocomplete-suggestions{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 6px);display:grid;gap:4px;padding:6px;background:#10151f;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 16px 35px rgba(0,0,0,.35);max-height:240px;overflow:auto}
 .autocomplete-suggestions button{display:block;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#e8ebf2;text-align:left;cursor:pointer;font:inherit}
 .autocomplete-suggestions button:hover{background:rgba(255,255,255,.08)}
+
+.autocomplete-suggestions small{display:block;margin-top:3px;opacity:.5;font-size:12px}

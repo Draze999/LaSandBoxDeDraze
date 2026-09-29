@@ -470,12 +470,84 @@ export async function searchAnime(name: string, limit = 50) {
     `,
     )
     .ilike("name", `%${escaped}%`)
-    .order("name", { ascending: true })
-    .limit(safeLimit);
+    .order("name", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  // Les recherches peuvent aussi porter sur les noms alternatifs.
+  // Le catalogue étant volontairement limité, on récupère ici les animés
+  // puis on filtre côté serveur pour permettre une recherche partielle
+  // dans chaque élément du tableau alt_name.
+  const rows = data ?? [];
+  const normalizedSearch = search
+    .toLocaleLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (!normalizedSearch) return [];
+
+  const matches = rows.filter((anime: any) => {
+    const names = [anime.name, ...(Array.isArray(anime.alt_name) ? anime.alt_name : [])];
+    return names.some((value) =>
+      String(value ?? "")
+        .toLocaleLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .includes(normalizedSearch),
+    );
+  });
+
+  // La requête principale ne retourne que les correspondances sur name.
+  // Pour les alias, faire une seconde lecture légère du catalogue permet
+  // de ne pas dépendre d'un opérateur PostgreSQL spécifique sur text[].
+  if (matches.length < safeLimit) {
+    const { data: aliasRows, error: aliasError } = await supabase
+      .from("anime")
+      .select(`
+        id,
+        name,
+        alt_name,
+        season,
+        image_url,
+        image_small_url
+      `)
+      .order("name", { ascending: true });
+
+    if (aliasError) throw aliasError;
+
+    const allMatches = (aliasRows ?? []).filter((anime: any) => {
+      const names = [anime.name, ...(Array.isArray(anime.alt_name) ? anime.alt_name : [])];
+      return names.some((value) =>
+        String(value ?? "")
+          .toLocaleLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .includes(normalizedSearch),
+      );
+    });
+
+    return allMatches.slice(0, safeLimit);
+  }
+
+  return matches.slice(0, safeLimit);
+}
+
+/**
+ * Vérifie une réponse d'un jeu contre le titre principal et ses noms
+ * alternatifs. La normalisation conserve le comportement actuel des jeux.
+ */
+export function isAnimeAnswerCorrect(guess: string, anime: { name: string; alt_name?: string[] | null }) {
+  const normalize = (value: string) => value
+    .trim()
+    .toLocaleLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+
+  const normalizedGuess = normalize(guess);
+  return [anime.name, ...(Array.isArray(anime.alt_name) ? anime.alt_name : [])]
+    .filter(Boolean)
+    .some((name) => normalize(String(name)) === normalizedGuess);
 }

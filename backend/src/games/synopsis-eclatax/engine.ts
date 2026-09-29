@@ -105,6 +105,7 @@ export class SynopsisEclataxEngine {
     const state: SynopsisEclataxState = {
         synopsis,
         original: String(row.name),
+        acceptedAnswers: [String(row.name), ...(Array.isArray((row as any).alt_name) ? (row as any).alt_name : [])],
         phase: "playing",
         endsAt,
         roundNumber,
@@ -183,7 +184,7 @@ export class SynopsisEclataxEngine {
     const guess = text.trim();
     if (!guess) return { ok: false as const, error: "EMPTY_GUESS" };
 
-    if (normalize(guess) !== normalize(state.original)) {
+    if (!state.acceptedAnswers.some((answer) => normalize(guess) === normalize(answer))) {
       state.failedIds.add(playerId);
 
       if (this.allPlayersAnswered(state)) {

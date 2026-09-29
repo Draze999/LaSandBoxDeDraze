@@ -18,11 +18,12 @@ type State = {
     name: string;
     imageUrl?: string | null;
     animeName?: string | null;
+    season?: string | null;
   };
   questions: TheOuCafeQuestion[];
   answers: TheOuCafeAnswer[];
   phase: "choosing" | "playing" | "finished";
-  candidates: Array<{ id: number; name: string; imageUrl?: string | null }>;
+  candidates: Array<{ id: number; name: string; imageUrl?: string | null; season?: string | null }>;
   winnerId: string | null;
   roundScores: Record<string, number>;
   roundNumber: number;
@@ -53,7 +54,7 @@ export class TheOuCafeEngine {
     const targetPlayerId = order[index];
     this.orderIndex.set(roomCode, index + 1);
 
-    let candidates: Array<{ id: number; name: string; imageUrl?: string | null }> = [];
+    let candidates: Array<{ id: number; name: string; imageUrl?: string | null; season?: string | null }> = [];
 
     if (category === "character") {
       const characters = await getRandomCharacters(3);
@@ -74,6 +75,7 @@ export class TheOuCafeEngine {
             id: Number(anime.id),
             name: String(anime.name),
             imageUrl: anime.image_url ?? null,
+            season: anime.season ?? null,
           });
         }
       }
@@ -93,6 +95,7 @@ export class TheOuCafeEngine {
         name: candidates[0].name,
         imageUrl: candidates[0].imageUrl ?? null,
         animeName: null,
+        season: category === "anime" ? candidates[0].season ?? null : null,
       },
       questions: [],
       answers: [],
@@ -128,6 +131,7 @@ export class TheOuCafeEngine {
       name: candidate.name,
       imageUrl: candidate.imageUrl ?? null,
       animeName,
+      season: s.category === "anime" ? candidate.season ?? null : null,
     };
     s.phase = "playing";
     this.onState(roomCode);

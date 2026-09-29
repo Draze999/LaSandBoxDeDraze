@@ -66,12 +66,15 @@ export class ScrambledEggsEngine {
     if (!row?.name) return { ok: false as const, error: "NO_CONTENT" };
     const old = this.states.get(roomCode);
     const original = String(row.name);
+    const acceptedAnswers = category === "anime"
+      ? [original, ...(Array.isArray((row as any).alt_name) ? (row as any).alt_name : [])]
+      : [original];
     const seconds = timeLimit >= 30 && timeLimit <= 300 ? timeLimit : 301;
     const endsAt = seconds > 300 ? null : Date.now() + seconds * 1000;
     const previousTimer = this.timers.get(roomCode);
     if (previousTimer) clearTimeout(previousTimer);
     const state: ScrambledEggsState = {
-      category, original, scrambled: scramble(original),
+      category, original, acceptedAnswers, scrambled: scramble(original),
       spaceCount: (original.match(/ /g) ?? []).length,
       phase: "playing", endsAt, guesses: [],
       proposalCounts: Object.fromEntries(playerIds.map(id => [id, 0])),
@@ -125,7 +128,8 @@ export class ScrambledEggsEngine {
     const currentCount = state.proposalCounts[playerId] ?? 0;
     const minCount = Math.min(...Object.values(state.proposalCounts));
     if (currentCount > minCount) return { ok: false as const, error: "WAIT_FOR_OTHERS" };
-    const correct = editDistanceAtMostOne(normalize(proposal), normalize(state.original));
+    const correct = state.acceptedAnswers?.some((answer) => editDistanceAtMostOne(normalize(proposal), normalize(answer)))
+      ?? editDistanceAtMostOne(normalize(proposal), normalize(state.original));
     state.proposalCounts[playerId] = currentCount + 1;
     state.guesses.unshift({ id: randomUUID(), authorId: playerId, text: proposal.slice(0, 120), correct });
     if (correct) {

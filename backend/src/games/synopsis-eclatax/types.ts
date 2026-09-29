@@ -1,6 +1,7 @@
 export type SynopsisEclataxState = {
   synopsis: string;
   original: string;
+  acceptedAnswers: string[];
   phase: "playing" | "between" | "finished";
   endsAt: number | null;
   roundNumber: number;

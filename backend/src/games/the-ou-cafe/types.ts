@@ -22,7 +22,7 @@ export type TheOuCafeSnapshot = {
   phase: "choosing" | "playing" | "finished";
   targetPlayerId: string;
   candidates: Array<{ id: number; name: string; imageUrl?: string | null }>;
-  secret?: { id: number; name: string; imageUrl?: string | null; animeName?: string | null };
+  secret?: { id: number; name: string; imageUrl?: string | null; animeName?: string | null; season?: string | null };
   questions: TheOuCafeQuestion[];
   answers: TheOuCafeAnswer[];
   questionCount: number;

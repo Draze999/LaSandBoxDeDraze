@@ -4,7 +4,7 @@ import "./SynopsisEclatax.css";
 
 type Player = { id: string; pseudo: string; isHost: boolean };
 type Room = { code: string; hostId: string; players: Player[] };
-type Suggestion = { id: number; name: string };
+type Suggestion = { id: number; name: string; alt_name?: string[] };
 type Snapshot = {
   synopsis: string;
   original: string | null;

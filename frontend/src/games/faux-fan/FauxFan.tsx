@@ -9,7 +9,7 @@ type Snapshot = {
   category: "anime" | "character";
   phase: "questioning" | "voting" | "guessing" | "finished";
   isIntruder: boolean;
-  secret: { name: string; imageUrl?: string | null; animeName?: string | null } | null;
+  secret: { name: string; imageUrl?: string | null; animeName?: string | null; season?: string | null } | null;
   intruderId: string | null;
   questions: Question[];
   questionCounts: Record<string, number>;
@@ -25,7 +25,7 @@ type Snapshot = {
   result: { intruderWon: boolean; intruderVotedMajority: boolean; correctGuess: boolean | null } | null;
 };
 
-type Suggestion = { id: number; name: string };
+type Suggestion = { id: number; name: string; alt_name?: string[] };
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3001" : "https://api.lasandboxdedraze.xyz";
 
@@ -178,7 +178,7 @@ export default function FauxFan({ room, playerId, onExit }: Props) {
     return <main className="game2-page">
       <section className="game2-shell">
         <header className="game2-header"><div><p className="eyebrow">Le Faux Fan · Manche {game.roundNumber} terminée</p><h1>Classement</h1><p className="game2-subtitle">Le secret était <strong>{game.secret?.name ?? "inconnu"}</strong>{game.category === "character" && game.secret?.animeName ? ` · ${game.secret.animeName}` : ""}.</p></div><div className="game2-secret-badge">🎭</div></header>
-        {game.secret && <div className="game2-result-secret"><img src={game.secret.imageUrl ?? ""} alt=""/><div><small>Secret</small><strong>{game.secret.name}</strong>{game.category === "character" && game.secret.animeName && <span>{game.secret.animeName}</span>}</div></div>}
+        {game.secret && <div className="game2-result-secret"><img src={game.secret.imageUrl ?? ""} alt=""/><div><small>Secret</small><strong>{game.secret.name}</strong>{game.category === "anime" && game.secret.season && <span>Saison : {game.secret.season}</span>}{game.category === "character" && game.secret.animeName && <span>{game.secret.animeName}</span>}</div></div>}
         <div className="game2-result-banner">
           <strong>{game.result?.intruderWon ? `L'intrus, ${player(game.intruderId ?? "")}, gagne la manche.` : `L'intrus, ${player(game.intruderId ?? "")}, a été démasqué.`}</strong>
           {game.result?.correctGuess !== null && <span>{game.result?.correctGuess ? "Son identification du secret est correcte." : "Son identification du secret est incorrecte."}</span>}
@@ -236,7 +236,7 @@ export default function FauxFan({ room, playerId, onExit }: Props) {
 
       {game.phase === "guessing" && <div className="game2-phase-layout">
         <div className="game2-phase">
-        {game.isIntruder ? <><p className="game2-instruction">Tu as été désigné comme intrus. Tente maintenant de retrouver le secret.</p>{!game.guess ? <div className="game2-guess-form autocomplete-field"><div className="autocomplete-input-wrap"><input value={guess} onChange={(e) => setGuess(e.target.value)} placeholder={game.category === "anime" ? "Nom de l'animé…" : "Nom du personnage…"} maxLength={120} onKeyDown={(e) => { if (e.key === "Escape") setGuessSuggestions([]); }} />{guessSuggestions.length > 0 && <div className="autocomplete-suggestions">{guessSuggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setGuessSuggestions([]); }}>{suggestion.name}</button>)}</div>}</div><button className="primary purple" onClick={submitGuess}>Proposer <span>→</span></button></div> : <div className="game2-guess-submitted">Ta proposition : <strong>{game.guess}</strong><span>Les autres joueurs doivent maintenant voter.</span></div>}</> : <><p className="game2-instruction">L'intrus propose une réponse. Accepte-la si tu penses qu'elle correspond au secret.</p>{game.guess ? <div className="game2-guess-card"><strong>{game.guess}</strong><div><button className="primary green" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(true)}>✓ Correct</button><button className="primary red" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(false)}>✕ Incorrect</button></div><small>{game.guessVotes.length}/{room.players.length - 1} votes</small></div> : <div className="game2-wait">L'intrus réfléchit à sa réponse…</div>}</>}
+        {game.isIntruder ? <><p className="game2-instruction">Tu as été désigné comme intrus. Tente maintenant de retrouver le secret.</p>{!game.guess ? <div className="game2-guess-form autocomplete-field"><div className="autocomplete-input-wrap"><input value={guess} onChange={(e) => setGuess(e.target.value)} placeholder={game.category === "anime" ? "Nom de l'animé…" : "Nom du personnage…"} maxLength={120} onKeyDown={(e) => { if (e.key === "Escape") setGuessSuggestions([]); }} />{guessSuggestions.length > 0 && <div className="autocomplete-suggestions">{guessSuggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setGuessSuggestions([]); }}><span>{suggestion.name}</span>{suggestion.alt_name?.length ? <small>Alias : {suggestion.alt_name.join(", ")}</small> : null}</button>)}</div>}</div><button className="primary purple" onClick={submitGuess}>Proposer <span>→</span></button></div> : <div className="game2-guess-submitted">Ta proposition : <strong>{game.guess}</strong><span>Les autres joueurs doivent maintenant voter.</span></div>}</> : <><p className="game2-instruction">L'intrus propose une réponse. Accepte-la si tu penses qu'elle correspond au secret.</p>{game.guess ? <div className="game2-guess-card"><strong>{game.guess}</strong><div><button className="primary green" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(true)}>✓ Correct</button><button className="primary red" disabled={game.guessVotes.some(v => v.voterId === playerId)} onClick={() => voteGuess(false)}>✕ Incorrect</button></div><small>{game.guessVotes.length}/{room.players.length - 1} votes</small></div> : <div className="game2-wait">L'intrus réfléchit à sa réponse…</div>}</>}
         </div>
         {historyPanel}
       </div>}

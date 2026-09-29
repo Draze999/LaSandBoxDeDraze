@@ -11,7 +11,7 @@ type Question = {
   right: string;
   chosen: "left" | "right" | "none" | null;
 };
-type Suggestion = { id: number; name: string };
+type Suggestion = { id: number; name: string; alt_name?: string[] };
 
 const API_BASE = import.meta.env.DEV ? "http://localhost:3001" : "https://api.lasandboxdedraze.xyz";
 
@@ -31,6 +31,7 @@ type Snapshot = {
     name: string;
     imageUrl?: string | null;
     animeName?: string | null;
+    season?: string | null;
   };
   questions: Question[];
   answers: Answer[];
@@ -187,7 +188,7 @@ export default function TheOuCafe({
             Thé ou Café · Manche {game.roundNumber} terminée
           </p>
           <h1>Classement</h1>
-          {game.secret && <div className="game1-result-secret"><img src={game.secret.imageUrl ?? ""} alt=""/><div><small>Élément secret</small><strong>{game.secret.name}</strong>{game.category === "character" && game.secret.animeName && <span>{game.secret.animeName}</span>}</div></div>}
+          {game.secret && <div className="game1-result-secret"><img src={game.secret.imageUrl ?? ""} alt=""/><div><small>Élément secret</small><strong>{game.secret.name}</strong>{game.category === "anime" && game.secret.season && <span>Saison : {game.secret.season}</span>}{game.category === "character" && game.secret.animeName && <span>{game.secret.animeName}</span>}</div></div>}
           <div className="game1-ranking">
             {ranking.map((p, i) => (
               <div className="game1-rank" key={p.id}>
@@ -228,6 +229,9 @@ export default function TheOuCafe({
               {game.secret?.imageUrl && <img src={game.secret.imageUrl} alt="" />}
               <div><small>Élément secret</small>
               <strong>{game.secret?.name}</strong>
+              {game.category === "anime" && game.secret?.season && (
+                <span>Saison : {game.secret.season}</span>
+              )}
               {game.category === "character" && game.secret?.animeName && (
                 <span>{game.secret.animeName}</span>
               )}
@@ -293,7 +297,8 @@ export default function TheOuCafe({
                     <div className="autocomplete-suggestions">
                       {answerSuggestions.map((suggestion) => (
                         <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setAnswer(suggestion.name); setAnswerSuggestions([]); }}>
-                          {suggestion.name}
+                          <span>{suggestion.name}</span>
+                          {suggestion.alt_name?.length ? <small>Alias : {suggestion.alt_name.join(", ")}</small> : null}
                         </button>
                       ))}
                     </div>

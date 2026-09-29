@@ -10,6 +10,7 @@ export type ScrambledEggsGuess = {
 export type ScrambledEggsState = {
   category: ScrambledEggsCategory;
   original: string;
+  acceptedAnswers?: string[];
   scrambled: string;
   spaceCount: number;
   phase: "playing" | "between" | "finished";
@@ -24,7 +25,7 @@ export type ScrambledEggsState = {
   cumulativeScores: Record<string, number>;
 };
 
-export type ScrambledEggsSnapshot = Omit<ScrambledEggsState, "original"> & {
+export type ScrambledEggsSnapshot = Omit<ScrambledEggsState, "original" | "acceptedAnswers"> & {
   original: string | null;
   canGuess: boolean;
   playerId: string;
