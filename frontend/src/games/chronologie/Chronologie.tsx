@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { socket } from "../../socket";
 import "./Chronologie.css";
 
@@ -52,7 +53,7 @@ export default function Chronologie({ room, playerId, onExit }: Props) {
   if (game.phase === "playing") {
     return <main className="chrono-page"><section className="chrono-shell">
       <header className="chrono-header"><div><p className="eyebrow">Chronologie</p><h1>Remets les animés dans l'ordre</h1><p className="chrono-subtitle">Fais glisser les cartes et dépose-les entre deux animés.</p></div><div className={`chrono-timer ${remaining <= 10 ? "danger" : ""}`}>{remaining}s</div></header>
-      <div className="chrono-board">
+      <div className="chrono-board" style={{ "--chrono-count": game.ownOrder.length } as CSSProperties}>
         <div className="chrono-order">
           <DropZone onDrop={() => dragged !== null && move(dragged, 0)} />
           {game.ownOrder.map((id, index) => {
@@ -60,7 +61,7 @@ export default function Chronologie({ room, playerId, onExit }: Props) {
             return <div className="chrono-item-wrap" key={id}>
               <article className={`chrono-card ${dragged === index ? "dragging" : ""}`} draggable onDragStart={() => setDragged(index)} onDragEnd={() => setDragged(null)}>
                 {anime.image_url ? <img src={anime.image_url} alt="" draggable={false} /> : <div className="chrono-no-image" />}
-                <div><strong>{anime.name}</strong><span>{anime.season}</span></div>
+                <div><strong>{anime.name}</strong></div>
               </article>
               <DropZone onDrop={() => dragged !== null && move(dragged, index + 1)} />
             </div>;
@@ -77,14 +78,14 @@ export default function Chronologie({ room, playerId, onExit }: Props) {
     <header className="chrono-header"><div><p className="eyebrow">Chronologie · Résultats</p><h1>La vraie chronologie</h1><p className="chrono-subtitle">Les propositions sont comparées une par une. Les séparations vertes sont correctes, les rouges sont incorrectes.</p></div></header>
     <section className="chrono-correction">
       <h2>Ordre réel</h2>
-      <div className="chrono-result-list">{trueOrder.map((id, i) => <ResultCard key={id} anime={byId.get(id)!} last={i === trueOrder.length - 1} valid={true} showSeason />)}</div>
+      <div className="chrono-result-list" style={{ "--chrono-count": trueOrder.length } as CSSProperties}>{trueOrder.map((id, i) => <ResultCard key={id} anime={byId.get(id)!} last={i === trueOrder.length - 1} valid={true} showSeason />)}</div>
     </section>
     <section className="chrono-proposals">
       <h2>Propositions des joueurs</h2>
       <div className="chrono-proposals-scroll">
         {Object.entries(game.proposals ?? {}).map(([id, proposal]) => <div className="chrono-player-result" key={id}>
           <div className="chrono-player-heading"><strong>{names.get(id) ?? "Joueur"}</strong><span>{proposal.score ?? 0} / {Math.max(0, proposal.order.length - 1)} point{proposal.score === 1 ? "" : "s"}</span></div>
-          <div className="chrono-result-list">{proposal.order.map((animeId, i) => {
+          <div className="chrono-result-list" style={{ "--chrono-count": proposal.order.length } as CSSProperties}>{proposal.order.map((animeId, i) => {
             const left = byId.get(animeId);
             const right = proposal.order[i + 1] ? byId.get(proposal.order[i + 1]) : null;
             const valid = right ? compare(left!, right!) : true;
