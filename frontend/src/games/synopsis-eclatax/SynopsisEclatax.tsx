@@ -161,6 +161,7 @@ export default function SynopsisEclatax({ room, playerId, onExit }: Props) {
                   {suggestions.map((suggestion) => (
                     <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setText(suggestion.name); setSuggestions([]); }}>
                       {suggestion.name}
+                      {suggestion.alt_name?.length ? <small>Alias : {suggestion.alt_name.join(", ")}</small> : null}
                     </button>
                   ))}
                 </div>

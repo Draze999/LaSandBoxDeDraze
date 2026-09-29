@@ -118,7 +118,8 @@ export default function Picasso({ room, playerId, onExit }: Props) {
           <div className="game7-form autocomplete-field">
             <div className="autocomplete-input-wrap">
               <input value={guess} onChange={e => setGuess(e.target.value)} onKeyDown={e => { if(e.key === "Enter") submit(); if (e.key === "Escape") setSuggestions([]); }} placeholder={game.category === "anime" ? "Nom de l'animé…" : "Nom du personnage…"} maxLength={160} disabled={abandoned} />
-              {suggestions.length > 0 && <div className="autocomplete-suggestions">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setSuggestions([]); }}>{suggestion.name}</button>)}</div>}
+              {suggestions.length > 0 && <div className="autocomplete-suggestions">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setSuggestions([]); }}>{suggestion.name}{suggestion.alt_name?.length ? <small>Alias : {suggestion.alt_name.join(", ")}</small> : null}
+</button>)}</div>}
             </div>
             <button className="primary purple" onClick={submit} disabled={abandoned}>{abandoned ? "Tu as abandonné" : "Répondre →"}</button>
             {!abandoned && <button className="game7-abandon" onClick={abandon}>J'abandonne</button>}

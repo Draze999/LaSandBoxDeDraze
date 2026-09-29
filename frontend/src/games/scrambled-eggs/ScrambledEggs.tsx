@@ -148,7 +148,7 @@ export default function ScrambledEggs({ room, playerId, onExit }: Props) {
                 maxLength={120}
                 disabled={!game.canGuess}
               />
-              {suggestions.length > 0 && <div className="autocomplete-suggestions">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setSuggestions([]); }}>{suggestion.name}</button>)}</div>}
+              {suggestions.length > 0 && <div className="autocomplete-suggestions">{suggestions.map((suggestion) => <button key={suggestion.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setGuess(suggestion.name); setSuggestions([]); }}>{suggestion.name}{suggestion.alt_name?.length ? <small>Alias : {suggestion.alt_name.join(", ")}</small> : null}</button>)}</div>}
             </div>
             <button className="primary purple" onClick={submit} disabled={!game.canGuess}>
               {game.canGuess ? "Proposer →" : "En attente des autres…"}
