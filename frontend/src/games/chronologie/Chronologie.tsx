@@ -59,7 +59,23 @@ export default function Chronologie({ room, playerId, onExit }: Props) {
           {game.ownOrder.map((id, index) => {
             const anime = byId.get(id)!;
             return <div className="chrono-item-wrap" key={id}>
-              <article className={`chrono-card ${dragged === index ? "dragging" : ""}`} draggable onDragStart={() => setDragged(index)} onDragEnd={() => setDragged(null)}>
+              <article
+                className={`chrono-card ${dragged === index ? "dragging" : ""}`}
+                draggable
+                onDragStart={() => setDragged(index)}
+                onDragEnd={() => setDragged(null)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragged === null) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const insertion = e.clientX < rect.left + rect.width / 2 ? index : index + 1;
+                  move(dragged, insertion);
+                }}
+              >
                 {anime.image_url ? <img src={anime.image_url} alt="" draggable={false} /> : <div className="chrono-no-image" />}
                 <div><strong>{anime.name}</strong></div>
               </article>
