@@ -59,7 +59,7 @@ export default function Chronologie({ room, playerId, onExit }: Props) {
             const anime = byId.get(id)!;
             return <div className="chrono-item-wrap" key={id}>
               <article className={`chrono-card ${dragged === index ? "dragging" : ""}`} draggable onDragStart={() => setDragged(index)} onDragEnd={() => setDragged(null)}>
-                {anime.image_small_url || anime.image_url ? <img src={anime.image_small_url || anime.image_url || ""} alt="" draggable={false} /> : <div className="chrono-no-image" />}
+                {anime.image_url ? <img src={anime.image_url} alt="" draggable={false} /> : <div className="chrono-no-image" />}
                 <div><strong>{anime.name}</strong><span>{anime.season}</span></div>
               </article>
               <DropZone onDrop={() => dragged !== null && move(dragged, index + 1)} />
@@ -108,5 +108,5 @@ function compare(a: Anime, b: Anime) {
 }
 
 function ResultCard({ anime, last, valid, showSeason = false }: { anime: Anime; last: boolean; valid: boolean; showSeason?: boolean }) {
-  return <div className="chrono-result-wrap"><article className="chrono-card result">{anime.image_small_url || anime.image_url ? <img src={anime.image_small_url || anime.image_url || ""} alt="" /> : <div className="chrono-no-image" />}<div><strong>{anime.name}</strong>{showSeason && <span>{anime.season}</span>}</div></article>{!last && <div className={`chrono-separator ${valid ? "valid" : "invalid"}`}><span /></div>}</div>;
+  return <div className="chrono-result-wrap"><article className="chrono-card result">{anime.image_url ? <img src={anime.image_url} alt="" /> : <div className="chrono-no-image" />}<div><strong>{anime.name}</strong>{showSeason && <span>{anime.season}</span>}</div></article>{!last && <div className={`chrono-separator ${valid ? "valid" : "invalid"}`}><span /></div>}</div>;
 }
