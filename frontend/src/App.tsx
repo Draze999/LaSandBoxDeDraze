@@ -10,6 +10,7 @@ import Picasso from "./games/picasso/Picasso";
 import ALaSuite from "./games/a-la-suite/ALaSuite";
 import SynopsisEclatax from "./games/synopsis-eclatax/SynopsisEclatax";
 import Chronologie from "./games/chronologie/Chronologie";
+import MaisTu from "./games/mais-tu/MaisTu";
 
 type Game = {
   id: string;
@@ -23,7 +24,7 @@ type Room = {
   code: string;
   gameId: string;
   hostId: string;
-  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number; scrambledEggsRounds?: number; picassoRounds?: number; aLaSuiteTimeLimit?: number; synopsisEclataxRounds?: number; chronologieTimeLimit?: number; chronologieItemCount?: number } };
+  settings: { name: string; maxPlayers: number; private: boolean; gameSettings?: { timeLimit?: number; theOuCafeCategory?: "anime" | "character"; fauxFanCategory?: "anime" | "character"; tierlistCategory?: "anime" | "character"; tierlistItemCount?: number; tierlistTimeLimit?: number; scrambledEggsCategory?: "anime" | "character"; scrambledEggsTimeLimit?: number; picassoCategory?: "anime" | "character"; picassoTimeLimit?: number; scrambledEggsRounds?: number; picassoRounds?: number; aLaSuiteTimeLimit?: number; synopsisEclataxRounds?: number; chronologieTimeLimit?: number; chronologieItemCount?: number; maisTuRounds?: number } };
   players: Player[];
 };
 
@@ -101,6 +102,13 @@ const games: Game[] = [
     color: "#4f9cba",
     icon: "⏳",
   },
+  {
+    id: "game-11",
+    name: "Sabotage",
+    description: "Sabote un personnage, vote pour le pire.",
+    color: "#9367c7",
+    icon: "💀",
+  },
 ];
 
 function startErrorMessage(error: string) {
@@ -111,6 +119,7 @@ function startErrorMessage(error: string) {
     NOT_ENOUGH_PLAYERS: "Il faut au moins 2 joueurs.",
     START_IN_PROGRESS: "La partie est déjà en cours de préparation.",
     NOT_ENOUGH_ANIME: "Pas assez d'animés avec une saison de sortie distincte.",
+    CONTENT_LOAD_FAILED: "Impossible de charger un personnage depuis la base de données.",
   };
   return messages[error] ?? "Impossible de lancer la partie.";
 }
@@ -205,6 +214,7 @@ export default function App() {
     const startGame8 = () => { setStarted(true); setStartingGame(false); };
     const startGame9 = () => { setStarted(true); setStartingGame(false); };
     const startGame10 = () => { setStarted(true); setStartingGame(false); };
+    const startGame11 = () => { setStarted(true); setStartingGame(false); };
 
     const restore = () => {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -245,6 +255,7 @@ export default function App() {
     socket.on("game8:start", startGame8);
     socket.on("game9:start", startGame9);
     socket.on("game10:start", startGame10);
+    socket.on("game11:start", startGame11);
 
     if (socket.connected) restore();
     else if (localStorage.getItem(SESSION_KEY)) socket.connect();
@@ -263,6 +274,7 @@ export default function App() {
       socket.off("game8:start", startGame8);
       socket.off("game9:start", startGame9);
       socket.off("game10:start", startGame10);
+      socket.off("game11:start", startGame11);
     };
   }, []);
   const connect = () => {
@@ -278,7 +290,7 @@ export default function App() {
       {
         pseudo: createPseudo,
         gameId: selectedGame,
-        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1, chronologieTimeLimit: 45, chronologieItemCount: 8 } },
+        settings: { name: "Ma partie", maxPlayers: 8, private: true, gameSettings: { timeLimit: 60, fauxFanCategory: "anime", tierlistCategory: "anime", tierlistItemCount: 10, tierlistTimeLimit: 300, scrambledEggsCategory: "anime", scrambledEggsTimeLimit: 300, picassoCategory: "anime", picassoTimeLimit: 300, scrambledEggsRounds: 1, picassoRounds: 1, aLaSuiteTimeLimit: 60, synopsisEclataxRounds: 1, chronologieTimeLimit: 45, chronologieItemCount: 8, maisTuRounds: 5 } },
       },
       (r: any) => {
         if (!r?.ok) return setError(r?.error ?? "Erreur");
@@ -463,6 +475,17 @@ export default function App() {
           <span className="status"><i /> Partie en cours</span>
         </header>
         <SynopsisEclatax room={room} playerId={playerId} onExit={() => setStarted(false)} />
+      </main></div>
+    );
+
+  if (room && room.gameId === "game-11" && started)
+    return (
+      <div className="app"><Background /><main className="room-page">
+        <header className="topbar">
+          <button className="brand" onClick={() => setStarted(false)}><span className="brand-mark">A</span> L'Atelier de Draze</button>
+          <span className="status"><i /> Partie en cours</span>
+        </header>
+        <MaisTu room={room} playerId={playerId} onExit={() => setStarted(false)} />
       </main></div>
     );
 
@@ -763,6 +786,17 @@ export default function App() {
                     </label>
                   </>
                 )}
+                {room.gameId === "game-11" && (
+                  <label>
+                    Nombre de manches : <strong>{room.settings.gameSettings?.maisTuRounds ?? 5}</strong>
+                    <input type="range" min={1} max={10} step={1}
+                      value={room.settings.gameSettings?.maisTuRounds ?? 5}
+                      disabled={room.hostId !== playerId}
+                      onChange={(e) => update({ gameSettings: { maisTuRounds: Number(e.target.value) } })}
+                      style={{ width: "100%" }}
+                    />
+                  </label>
+                )}
                 {room.gameId === "game-3" && (
                   <label>
                     Temps du Petit Bac :{" "}
@@ -863,7 +897,7 @@ export default function App() {
             </label>
             <div className="label-line">
               <span>Choisis un jeu</span>
-              <span className="optional">9 disponibles</span>
+              <span className="optional">11 disponibles</span>
             </div>
             <div className="games">
               {games.map((g) => (
