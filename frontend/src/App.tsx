@@ -115,7 +115,7 @@ function startErrorMessage(error: string) {
   const messages: Record<string, string> = {
     OPENAI_NOT_CONFIGURED: "OPENAI_API_KEY n'est pas configurée sur le serveur.",
     AI_GENERATION_FAILED: "Impossible de générer le synopsis avec l'IA.",
-    NO_CONTENT: "Aucun animé disponible dans la base de données.",
+    NO_CONTENT: "Aucun personnage ou animé disponible dans la base de données.",
     NOT_ENOUGH_PLAYERS: "Il faut au moins 2 joueurs.",
     START_IN_PROGRESS: "La partie est déjà en cours de préparation.",
     NOT_ENOUGH_ANIME: "Pas assez d'animés avec une saison de sortie distincte.",
@@ -256,6 +256,8 @@ export default function App() {
     socket.on("game9:start", startGame9);
     socket.on("game10:start", startGame10);
     socket.on("game11:start", startGame11);
+    // L’état initial peut arriver avant l’événement dédié de démarrage.
+    socket.on("game11:state", startGame11);
 
     if (socket.connected) restore();
     else if (localStorage.getItem(SESSION_KEY)) socket.connect();
@@ -275,6 +277,7 @@ export default function App() {
       socket.off("game9:start", startGame9);
       socket.off("game10:start", startGame10);
       socket.off("game11:start", startGame11);
+      socket.off("game11:state", startGame11);
     };
   }, []);
   const connect = () => {

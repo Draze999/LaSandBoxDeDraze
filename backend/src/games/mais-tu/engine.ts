@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getRandomCharacter } from "../../database/anime.js";
+import { getAllCharacters, getRandomCharacter } from "../../database/anime.js";
 import type { MaisTuCharacter, MaisTuSnapshot, MaisTuState } from "./types.js";
 
 type Callback = (roomCode: string) => void;
@@ -35,9 +35,20 @@ export class MaisTuEngine {
       let character: any = null;
       for (let attempt = 0; attempt < 12; attempt++) {
         const candidate = await getRandomCharacter();
+        // Certaines configurations Supabase peuvent renvoyer un résultat vide
+        // via la RPC même si la table characters contient des entrées.
         if (!candidate?.name) continue;
         character = candidate;
         if (!state.usedCharacterIds.includes(Number(candidate.id))) break;
+      }
+      if (!character?.name) {
+        const fallbackCharacters = await getAllCharacters();
+        const usable = fallbackCharacters.filter((item: any) => item?.name);
+        if (usable.length) {
+          const unused = usable.filter((item: any) => !state.usedCharacterIds.includes(Number(item.id)));
+          const pool = unused.length ? unused : usable;
+          character = pool[Math.floor(Math.random() * pool.length)];
+        }
       }
       if (!character?.name) { this.clear(code); return { ok: false as const, error: "NO_CONTENT" }; }
       state.character = {

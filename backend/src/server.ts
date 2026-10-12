@@ -635,6 +635,9 @@ io.on("connection", (socket) => {
     if (room.gameId === "game-11") {
       const rounds = room.settings.gameSettings?.maisTuRounds ?? 5;
       const connectedPlayerIds = [...room.players.values()].filter((player) => Boolean(player.socketId)).map((player) => player.id);
+      if (connectedPlayerIds.length < 2) {
+        return cb?.({ ok: false, error: "NOT_ENOUGH_PLAYERS" });
+      }
       const result = await maisTu.start(room.code, connectedPlayerIds, rounds);
       if (!result.ok) return cb?.(result);
       for (const player of room.players.values()) {
